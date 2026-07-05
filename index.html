@@ -17,7 +17,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>d&b PA Tech Tool v0.97</title>
+<title>d&b PA Tech Tool v0.98.01</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -609,7 +609,7 @@ svg { width: 100%; display: block; }
 
 <nav class="nav">
   <div class="nav-top-row">
-    <div class="nav-brand">d&amp;b PA Tech Tool <span style="font-size:0.7em;opacity:0.6">v0.97</span></div>
+    <div class="nav-brand">d&amp;b PA Tech Tool <span style="font-size:0.7em;opacity:0.6">v0.98.01</span></div>
     <button id="themeToggle" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:0.72rem;padding:4px 10px;border-radius:4px;cursor:pointer;letter-spacing:0.05em;white-space:nowrap">Light</button>
   </div>
   <div class="nav-tabs">
@@ -2504,33 +2504,9 @@ function processFile(file) {
       for (const [id, nm] of imperialNameUpdates) {
         dbI.run("UPDATE SourceGroups SET Name=? WHERE SourceGroupId=?", [nm, id]);
       }
-      const distCols = [
-        ['SourceGroupsAdditionalData','OriginX'],['SourceGroupsAdditionalData','OriginY'],
-        ['SourceGroupsAdditionalData','OriginZ'],['SourceGroupsAdditionalData','HeightLowestEdge'],
-        ['Cabinets','OriginX'],['Cabinets','OriginY'],['Cabinets','OriginZ'],
-        ['FlyingFrames','OriginX'],['FlyingFrames','OriginY'],['FlyingFrames','OriginZ'],
-        ['FlyingFrames','FrontPickX'],['FlyingFrames','FrontPickY'],
-        ['FlyingFrames','RearPickX'],['FlyingFrames','RearPickY'],
-        ['FlyingFrames','SinglePickX'],['FlyingFrames','SinglePickY'],
-        ['FlyingFrames','FrontPickPointPosition'],['FlyingFrames','RearPickPointPosition'],
-        ['FlyingFrames','SinglePickPointPosition'],
-        ['VenueObjectPoints','X'],['VenueObjectPoints','Y'],['VenueObjectPoints','Z'],
-        ['VenueObjects','OriginX'],['VenueObjects','OriginY'],['VenueObjects','OriginZ'],
-        ['VenueObjects','ListenerHeight'],
-      ];
-      const wtCols = [
-        ['FlyingFrames','TotalWeight'],['FlyingFrames','FrontPickPointWeight'],
-        ['FlyingFrames','RearPickPointWeight'],['FlyingFrames','FrontPickPointWeightZeroDegrees'],
-        ['FlyingFrames','RearPickPointWeightZeroDegrees'],
-      ];
-      const forceCols = [
-        ['SourceGroupsAdditionalData','MaxLoadTension'],['SourceGroupsAdditionalData','MaxLoadTensionBGV'],
-        ['SourceGroupsAdditionalData','MaxLoadCompression'],['SourceGroupsAdditionalData','MaxLoadCompressionBGV'],
-        ['SourceGroupsAdditionalData','CompressionForce'],
-      ];
-      for (const [t,c] of distCols)  try { dbI.run(`UPDATE ${t} SET ${c}=${c}*${M2FT}  WHERE ${c} IS NOT NULL`); } catch(e){}
-      for (const [t,c] of wtCols)    try { dbI.run(`UPDATE ${t} SET ${c}=${c}*${KG2LB} WHERE ${c} IS NOT NULL`); } catch(e){}
-      for (const [t,c] of forceCols) try { dbI.run(`UPDATE ${t} SET ${c}=${c}*${KN2KP} WHERE ${c} IS NOT NULL`); } catch(e){}
+      // ArrayCalc stores all coordinates/weights/forces in SI (metres, kg, kN) regardless of
+      // display unit. UnitLength/UnitWeight are display flags only — DO NOT convert stored values,
+      // that double-converts and oversizes the geometry. Imperial file = metric values + flags flipped.
       dbI.run("UPDATE ProjectSettings SET Value=1 WHERE Name='UnitLength'");
       dbI.run("UPDATE ProjectSettings SET Value=1 WHERE Name='UnitWeight'");
       imperialDbBytes = dbI.export();
