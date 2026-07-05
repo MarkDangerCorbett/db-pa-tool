@@ -4,6 +4,9 @@ Versioning: `major.minor.patch` (e.g. 0.98.01). Patch = small point updates.
 
 ---
 
+## 0.98.02
+- **Fixed `.dbep` (FF Spacing) export crashing ArrayCalc.** Export renumbers box `UniqueId` to 1000+ but was copying the original `Linked` values, which point at the source project's old UniqueIds — dangling references → crash. Now forces `Linked="0"` (matches the SubArray export). Verified against a known-good `.dbep` from the same project. (`Symmetric` left as-is — a known-good file uses `Symmetric="1"` with both sides explicit, so it was never the problem.)
+
 ## 0.98.01
 - Changelog started. Adopted three-part version numbers for small point updates.
 
