@@ -3,9 +3,8 @@
 
 https://markdangercorbett.github.io/db-pa-tool/
 
-A self-contained, offline browser tool for working with d&b audiotechnik ArrayCalc v12 (`.dbpr`) project files. Built for live-sound and systems engineers who need to calculate, convert, and export rigging and array data without internet access, accounts, or a backend.
-
-Everything runs client-side in a single HTML file. No data leaves the device.
+A self-contained, offline browser tool for working with d&b audiotechnik ArrayCalc v12 (`.dbpr`) project files. Built for systems engineers who need to calculate, convert, and export rigging and array data.
+Everything runs client-side in a single HTML file. No data leaves the device. 
 
 ## What it does
 
