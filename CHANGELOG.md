@@ -4,6 +4,19 @@ Versioning: `major.minor.patch` (e.g. 0.98.01). Patch = small point updates.
 
 ---
 
+## 0.98.03
+- Point Conversion: new "Get data from CAD Stuff" button — pulls the modified rigging points (fleet-adjusted positions, delta splits, chosen motors, split weights) into the table. Refuses if CAD Stuff hasn't been touched.
+- Delta points labelled by geometry: Onstage/Offstage normally (nearer stage centre); US/DS when the split runs up/downstage (DS = more +x); SL/SR when the array straddles the centreline (+y = SL).
+- Sub export buttons (simple + thrust): note added that the tool modifies positional data — cabinet numbers and amp settings must be redone manually.
+- Renamed "Number of subs" → "Number of positions" (simple + thrust).
+- Swapped tab order: CAD Stuff now sits before Point Conversion.
+
+## 1.0
+- **v1.0 release.**
+- Removed beta banner.
+- Import page now shows the ArrayCalc version the file was saved with.
+- Confirmed compatibility with ArrayCalc v12.8.3 (new version drops `MVRUuidMapping` table — unused by this tool, no schema changes to any table we read).
+- Read Me updated: v12 → v12+, notes tested versions.
 
 ## 0.98.06
 - Rewrote Read Me page with detailed per-tab descriptions. Added GitHub link button.
@@ -24,13 +37,6 @@ Versioning: `major.minor.patch` (e.g. 0.98.01). Patch = small point updates.
 - Sub export note: tool modifies positional data, redo cabinet numbers and amp settings manually.
 - Renamed "Number of subs" → "Number of positions" (simple + thrust).
 - Swapped tab order: CAD Stuff before Point Conversion.
-- 
-## 0.98.03
-- Point Conversion: new "Get data from CAD Stuff" button — pulls the modified rigging points (fleet-adjusted positions, delta splits, chosen motors, split weights) into the table. Refuses if CAD Stuff hasn't been touched.
-- Delta points labelled by geometry: Onstage/Offstage normally (nearer stage centre); US/DS when the split runs up/downstage (DS = more +x); SL/SR when the array straddles the centreline (+y = SL).
-- Sub export buttons (simple + thrust): note added that the tool modifies positional data — cabinet numbers and amp settings must be redone manually.
-- Renamed "Number of subs" → "Number of positions" (simple + thrust).
-- Swapped tab order: CAD Stuff now sits before Point Conversion.
 
 ## 0.98.02
 - **Fixed `.dbep` (FF Spacing) export crashing ArrayCalc.** Export renumbers box `UniqueId` to 1000+ but was copying the original `Linked` values, which point at the source project's old UniqueIds — dangling references → crash. Now forces `Linked="0"` (matches the SubArray export). Verified against a known-good `.dbep` from the same project. (`Symmetric` left as-is — a known-good file uses `Symmetric="1"` with both sides explicit, so it was never the problem.)
