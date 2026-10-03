@@ -11,6 +11,10 @@ Versioning: `major.minor.patch` (e.g. 0.98.01). Patch = small point updates.
 - Renamed "Number of subs" → "Number of positions" (simple + thrust).
 - Swapped tab order: CAD Stuff now sits before Point Conversion.
 
+## 1.0.02
+- Confirmed compatibility with ArrayCalc v13.0.1 (beta). 31 new tables — none affect the tool. All columns we read are unchanged. No code changes needed.
+- Read Me updated to note v13 beta compatibility.
+
 ## 1.0.01
 - **Fixed advanced pinning skipping 0° splays.** Box 1 in advanced compression mode was hunting for the first *non-zero* splay and displaying that (e.g. 1° instead of 0°). Now correctly takes the first compression box's splay, whatever it is. Thanks Josh for finding this one.
 
