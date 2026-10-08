@@ -4,12 +4,8 @@ Versioning: `major.minor.patch` (e.g. 0.98.01). Patch = small point updates.
 
 ---
 
-## 0.98.03
-- Point Conversion: new "Get data from CAD Stuff" button — pulls the modified rigging points (fleet-adjusted positions, delta splits, chosen motors, split weights) into the table. Refuses if CAD Stuff hasn't been touched.
-- Delta points labelled by geometry: Onstage/Offstage normally (nearer stage centre); US/DS when the split runs up/downstage (DS = more +x); SL/SR when the array straddles the centreline (+y = SL).
-- Sub export buttons (simple + thrust): note added that the tool modifies positional data — cabinet numbers and amp settings must be redone manually.
-- Renamed "Number of subs" → "Number of positions" (simple + thrust).
-- Swapped tab order: CAD Stuff now sits before Point Conversion.
+## 1.0.03
+- **Fixed angle translator diagram.** Protractor/circle was hidden until a value was entered — now draws the empty protractor (circle, crosshairs, cardinal labels) on page load. Cleaned up dead code.
 
 ## 1.0.02
 - Confirmed compatibility with ArrayCalc v13.0.1 (beta). 31 new tables — none affect the tool. All columns we read are unchanged. No code changes needed.
@@ -39,11 +35,20 @@ Versioning: `major.minor.patch` (e.g. 0.98.01). Patch = small point updates.
 - Audience distance defaults to 1.8 m. Restore defaults button. State resets on Clear and new file load.
 - Stage width now taken as wider horizontal span (was Y-only).
 - Removed old Coverage mode. Renamed Mixed → Coverage. Export suffix -coverage.
+
+## 0.98.04
 - CAD Stuff: renamed Fleet column to "Adjust fleet? (m)".
 - Point Conversion: new "Get data from CAD Stuff" button. Delta points labelled Onstage/Offstage, US/DS, or SL/SR by geometry.
 - Sub export note: tool modifies positional data, redo cabinet numbers and amp settings manually.
 - Renamed "Number of subs" → "Number of positions" (simple + thrust).
 - Swapped tab order: CAD Stuff before Point Conversion.
+
+## 0.98.03
+- Point Conversion: new "Get data from CAD Stuff" button — pulls the modified rigging points (fleet-adjusted positions, delta splits, chosen motors, split weights) into the table. Refuses if CAD Stuff hasn't been touched.
+- Delta points labelled by geometry: Onstage/Offstage normally (nearer stage centre); US/DS when the split runs up/downstage (DS = more +x); SL/SR when the array straddles the centreline (+y = SL).
+- Sub export buttons (simple + thrust): note added that the tool modifies positional data — cabinet numbers and amp settings must be redone manually.
+- Renamed "Number of subs" → "Number of positions" (simple + thrust).
+- Swapped tab order: CAD Stuff now sits before Point Conversion.
 
 ## 0.98.02
 - **Fixed `.dbep` (FF Spacing) export crashing ArrayCalc.** Export renumbers box `UniqueId` to 1000+ but was copying the original `Linked` values, which point at the source project's old UniqueIds — dangling references → crash. Now forces `Linked="0"` (matches the SubArray export). Verified against a known-good `.dbep` from the same project. (`Symmetric` left as-is — a known-good file uses `Symmetric="1"` with both sides explicit, so it was never the problem.)
