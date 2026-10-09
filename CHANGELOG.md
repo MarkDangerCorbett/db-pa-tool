@@ -4,6 +4,17 @@ Versioning: `major.minor.patch` (e.g. 0.98.01). Patch = small point updates.
 
 ---
 
+## 1.1.0 (beta)
+- **Amp ID Assignment tab — Export to .dbpr.** Reassigns amp IDs and exports a modified project file. Creates new Device rows per amp, updates Cabinets and Groups (R1 output routing) tables, restores original SourceGroup names.
+- Device.Name includes subsystem prefix (e.g. "Lipfill 3.01" not "3.01").
+- AmplifierChannels.Name set per channel to the subsystem using that channel. Handles cross-subsystem amps correctly.
+- OutputMode calculated from cab types per channel pair. Determines active (2-way) vs passive (dual-channel) per SpeakerId from existing file data, then computes mode per channel pair: A+B active + C+D active = 8, A+B only = 2, C+D only = 4, both passive = 0.
+- InputMode preserved from original device assignments.
+- Orphaned Device/AmplifierChannels/DevicesAmplifier rows cleaned up.
+
+## 1.0.04
+- Added banner linking to v1.1.0 beta.
+
 ## 1.0.03
 - **Fixed angle translator diagram.** Protractor/circle was hidden until a value was entered — now draws the empty protractor (circle, crosshairs, cardinal labels) on page load. Cleaned up dead code.
 
