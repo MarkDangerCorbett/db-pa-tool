@@ -17,7 +17,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>d&b PA Tech Tool v1.0.04</title>
+<title>d&b PA Tech Tool v1.1.1 BETA</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -601,15 +601,14 @@ svg { width: 100%; display: block; }
 .rpt-pair   { font-size: 0.7rem; color: var(--accent2); font-weight: normal;
               border: 1px solid var(--accent2); padding: 1px 5px; border-radius: 2px; }
                 border-top: 1px solid var(--border); padding-top: 6px; }
-
+.rack-selected { outline: 2px solid var(--green) !important; background: rgba(0,200,100,0.15) !important; }
 </style>
 </head>
 <body>
 
-<div style="background:var(--accent);color:#000;text-align:center;padding:6px 12px;font-family:var(--mono);font-size:0.78rem;letter-spacing:0.03em"><b>v1.1.0 beta</b> now available with Amp ID Assignment export — <a href="beta/" style="color:#000;text-decoration:underline;font-weight:bold">Try it here</a></div>
 <nav class="nav">
   <div class="nav-top-row">
-    <div class="nav-brand">d&amp;b PA Tech Tool <span style="font-size:0.7em;opacity:0.6">v1.0.04</span></div>
+    <div class="nav-brand">d&amp;b PA Tech Tool <span style="font-size:0.7em;opacity:0.6">v1.1.1 BETA</span></div>
     <button id="themeToggle" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:0.72rem;padding:4px 10px;border-radius:4px;cursor:pointer;letter-spacing:0.05em;white-space:nowrap">Light</button>
   </div>
   <div class="nav-tabs">
@@ -621,6 +620,8 @@ svg { width: 100%; display: block; }
     <button class="nav-tab" id="tab-cad" onclick="showPage('cad')">CAD Stuff</button>
     <button class="nav-tab" id="tab-rigging" onclick="showPage('rigging')">Point Conversion</button>
     <button class="nav-tab" id="tab-other" onclick="showPage('other')">Other Calcs</button>
+    <button class="nav-tab" id="tab-ampid" onclick="showPage('ampid')">Amp IDs</button>
+    <button class="nav-tab" id="tab-rackbuild" onclick="showPage('rackbuild')">Rack Build</button>
     <button class="nav-tab" id="tab-readme" onclick="showPage('readme')">Read Me</button>
   </div>
 </nav>
@@ -660,6 +661,7 @@ svg { width: 100%; display: block; }
       <button class="btn btn-primary" onclick="showPage('spacing')">Open FF Spacing →</button>
       <button class="btn btn-primary" onclick="showPage('subspc')">Open Sub Spacing →</button>
       <button class="btn btn-primary" onclick="showPage('rigging')">Open Point Conversion →</button>
+      <button class="btn btn-primary" onclick="showPage('ampid')">Open Amp IDs →</button>
       <button class="btn btn-ghost" onclick="clearProject()" style="margin-left:auto">Clear</button>
     </div>
   </div>
@@ -1188,6 +1190,61 @@ svg { width: 100%; display: block; }
   </div>
 </div>
 
+<!-- ════════════════════════════════
+     PAGE — AMP ID ASSIGNMENT
+════════════════════════════════ -->
+<div id="page-ampid" class="page">
+  <p class="section-title" style="font-size:1.05rem;letter-spacing:0.22em;color:var(--text);margin-bottom:0.5rem;">Amp ID Assignment</p>
+  <p style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);line-height:1.65;margin:0 0 0.8rem 0;max-width:560px;">Each subsystem shows current amp IDs from the project file. Set a start ID, pick assignment direction, and hit Go to reassign.</p>
+
+  <div id="ampIdNoProjMsg" style="font-family:var(--mono);font-size:0.8rem;color:var(--muted);padding:20px 0">No project loaded — go to the <a href="#" onclick="showPage('import');return false" style="color:var(--accent)">Import tab</a> first.</div>
+
+  <div id="ampIdContent" style="display:none">
+    <div id="ampIdGroups"></div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+      <button onclick="ampIdExportDbpr()" style="font-family:var(--mono);font-size:0.78rem;background:var(--accent);color:#000;border:none;border-radius:4px;padding:8px 18px;cursor:pointer;font-weight:bold">Export .dbpr</button>
+      <span style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-left:10px">Writes current amp IDs back into the project file and downloads it</span>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     PAGE — RACK BUILD
+════════════════════════════════ -->
+<div id="page-rackbuild" class="page">
+  <p class="section-title" style="font-size:1.05rem;letter-spacing:0.22em;color:var(--text);margin-bottom:0.5rem;">Rack Build</p>
+  <div style="font-family:var(--mono);font-size:0.68rem;background:rgba(255,180,0,0.12);border:1px solid rgba(255,180,0,0.3);border-radius:4px;padding:6px 12px;margin-bottom:0.8rem;max-width:560px;color:var(--text)">⚠ <strong>BETA</strong> — Rack Build is in testing. Feedback welcome: <a href="mailto:bestdayeveraudio@gmail.com" style="color:var(--accent)">bestdayeveraudio@gmail.com</a></div>
+  <p style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);line-height:1.65;margin:0 0 0.8rem 0;max-width:560px;">Drag cabinets from the left into amp channel slots. Active cabs take AB or CD. Passive cabs take one channel.</p>
+
+  <div id="rackNoProjMsg" style="font-family:var(--mono);font-size:0.8rem;color:var(--muted);padding:20px 0">No amp IDs assigned — go to the <a href="#" onclick="showPage('ampid');return false" style="color:var(--accent)">Amp IDs tab</a> first.</div>
+
+  <div id="rackBuildContent" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;font-family:var(--mono);font-size:0.76rem">
+      <label style="color:var(--muted)">Racks:</label>
+      <input type="number" id="rackCount" value="1" min="1" max="50" style="font-family:var(--mono);font-size:0.76rem;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 6px;width:50px">
+      <label style="color:var(--muted)">Amps per rack:</label>
+      <input type="number" id="rackAmpsPerRack" value="3" min="1" max="20" style="font-family:var(--mono);font-size:0.76rem;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 6px;width:50px">
+      <button onclick="rackBuildCreate()" style="font-family:var(--mono);font-size:0.76rem;background:var(--green);color:#000;border:none;border-radius:4px;padding:6px 14px;cursor:pointer;font-weight:bold">Go →</button>
+      <button onclick="rackPullFromAmpId()" style="font-family:var(--mono);font-size:0.72rem;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:5px 10px;cursor:pointer" title="Import amp assignments from Amp ID tab">← Pull from Amp ID</button>
+      <span style="flex:1"></span>
+      <button onclick="rackBuildExportDbpr()" style="font-family:var(--mono);font-size:0.76rem;background:var(--accent);color:#000;border:none;border-radius:4px;padding:6px 14px;cursor:pointer;font-weight:bold">Export .dbpr ↓</button>
+    </div>
+
+    <div style="display:flex;gap:16px;align-items:flex-start">
+      <!-- Left: cabinet list (sticky) -->
+      <div style="flex:0 0 260px;position:sticky;top:0;align-self:flex-start">
+        <p style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin:0 0 6px 0;font-weight:bold">Cabinets</p>
+        <div id="rackAmpList" style="border:1px solid var(--border);border-radius:6px;padding:4px;min-height:200px;max-height:80vh;overflow-y:auto;background:var(--panel)"></div>
+      </div>
+      <!-- Right: racks -->
+      <div style="flex:1;min-width:0">
+        <p style="font-family:var(--mono);font-size:0.72rem;color:var(--muted);margin:0 0 6px 0;font-weight:bold">Racks</p>
+        <div id="rackContainer" style="display:flex;flex-wrap:wrap;gap:12px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="page-readme" class="page">
   <p class="section-title" style="font-size:1.05rem;letter-spacing:0.22em;color:var(--text);margin-bottom:0.5rem;">Read Me</p>
   <p style="margin-bottom:1rem">
@@ -1216,6 +1273,12 @@ svg { width: 100%; display: block; }
 
   <p style="color:var(--accent);letter-spacing:0.1em;font-size:0.66rem;margin-bottom:0.3rem">POINT CONVERSION</p>
   <p style="color:var(--muted);margin-bottom:1.2rem">Convert coordinates between .dbpr, CSV, and .dbacv venue-point exports. Can pull modified rigging points straight from CAD Stuff. If you pull from a CSV file it asks which column is which. Can name points in table. .csv will export a CSV file. .dbev file exports points as rigging point elements to import back to ArrayCalc.</p>
+
+  <p style="color:var(--accent);letter-spacing:0.1em;font-size:0.66rem;margin-bottom:0.3rem">AMP IDs</p>
+  <p style="color:var(--muted);margin-bottom:1.2rem">Assign amplifier IDs (subnet.device) and channels to cabinets per source group. Supports active (2-channel AB/CD) and passive (single channel) modes. Auto-assign with start ID and direction. Exports a modified .dbpr with amp assignments written back into the project file — preserves ArraySight and all non-amp device data.</p>
+
+  <p style="color:var(--accent);letter-spacing:0.1em;font-size:0.66rem;margin-bottom:0.3rem">RACK BUILD <span style="color:rgba(255,180,0,0.8);font-size:0.58rem">BETA</span></p>
+  <p style="color:var(--muted);margin-bottom:1.2rem">Visual rack layout for amp ID assignment. Build racks, drag cabinets into amp channel slots. Active cabs snap to AB or CD pairs. Passive cabs take individual channels. Can pull assignments from the Amp ID tab or build from scratch. Multi-select with checkboxes, auto-assign with the arrow button. Exports a modified .dbpr the same way Amp IDs does. This is in beta — let me know if it breaks.</p>
 
   <p style="color:var(--accent);letter-spacing:0.1em;font-size:0.66rem;margin-bottom:0.3rem">OTHER CALCS</p>
   <p style="color:var(--muted);margin-bottom:1.2rem">Right-angle triangle, angle translator, wavelength/delay. Pretty basic really.</p>
@@ -1695,6 +1758,13 @@ function clearProject() {
   if (subRes) subRes.style.display = 'none';
   // Reset swag
   populateSwagDropdown();
+  // Reset amp ID tab
+  const ampIdNoProj = document.getElementById('ampIdNoProjMsg');
+  if (ampIdNoProj) ampIdNoProj.style.display = '';
+  const ampIdContent = document.getElementById('ampIdContent');
+  if (ampIdContent) ampIdContent.style.display = 'none';
+  const ampIdGroups = document.getElementById('ampIdGroups');
+  if (ampIdGroups) ampIdGroups.innerHTML = '';
 }
 
 // ══════════════════════════════════════
@@ -2077,6 +2147,1556 @@ function loadRiggingFromDbpr() {
   if (!_riggingData.length) { alert('No pick point data found.'); return; }
   _showRigTable(_riggingData.length + ' points from .dbpr');
 }
+
+// ══════════════════════════════════════
+//  AMP ID ASSIGNMENT
+// ══════════════════════════════════════
+
+const AMP_DUAL_ACTIVE = new Set([
+  'GSL8','GSL12','KSL8','KSL12','XSL8','XSL12',
+  'SL-SUB','KSL-SUB','SL-GSUB',
+  'J8','J12','J-SUB','J-INFRA',
+  'M2'
+]);
+
+function ampIdIsDualActive(cabName) {
+  if (!cabName) return false;
+  // M4-act-* and M6-act-* are dual active
+  if (/^M[46]-act-/i.test(cabName)) return true;
+  // Check exact match against known dual-active set
+  // Strip dispersion suffix for matching (e.g. "GSL8 hor" → "GSL8", "KSL8-100x50" → "KSL8")
+  const base = cabName.replace(/[\s-]+(hor|ver|\d+x\d+).*$/i, '').trim();
+  return AMP_DUAL_ACTIVE.has(base);
+}
+
+function ampIdIsLinear(cabName) {
+  return cabName && /^linear$/i.test(cabName.trim());
+}
+
+function populateAmpIdFromProject() {
+  const noProj = document.getElementById('ampIdNoProjMsg');
+  const content = document.getElementById('ampIdContent');
+  const container = document.getElementById('ampIdGroups');
+  if (!metricDbBytes) {
+    if (noProj) noProj.style.display = '';
+    if (content) content.style.display = 'none';
+    return;
+  }
+  if (noProj) noProj.style.display = 'none';
+  if (content) content.style.display = '';
+  container.innerHTML = '';
+
+  try {
+    const db = new SQL.Database(new Uint8Array(metricDbBytes));
+    // Type 1=line array, 2=point source, 3=sub array (skip 5=unused)
+    // Include all OrderIndex (paired/symmetric sides have OrderIndex = -1)
+    const sgRes = db.exec(`
+      SELECT sg.SourceGroupId, sg.Name, sg.Type,
+             sgad.DefaultRemoteIdSubnet, sgad.DefaultRemoteIdDevice,
+             sg.OrderIndex, sg.NextSourceGroupId
+      FROM SourceGroups sg
+      JOIN SourceGroupsAdditionalData sgad ON sg.SourceGroupId = sgad.SourceGroupId
+      WHERE sg.Type IN (1,2,3)
+      ORDER BY sg.Type, sg.OrderIndex
+    `);
+    if (!sgRes[0]) { db.close(); return; }
+
+    // Build a set of paired sgIds (NextSourceGroupId targets) so we can label them
+    const pairedIds = new Set();
+    for (const row of sgRes[0].values) {
+      if (row[6] > 0) pairedIds.add(row[6]); // NextSourceGroupId
+    }
+
+    // Sort: primary groups first by OrderIndex, then their paired side right after
+    // OrderIndex -1 groups are the symmetric copy; put them after their primary
+    const sortedGroups = [];
+    const paired = [];
+    for (const row of sgRes[0].values) {
+      if (row[5] >= 0) sortedGroups.push(row);  // primary
+      else paired.push(row);                      // symmetric side
+    }
+    // Insert each paired group right after its primary
+    for (const p of paired) {
+      // Find which primary references this paired sgId
+      const idx = sortedGroups.findIndex(r => r[6] === p[0]);
+      if (idx >= 0) sortedGroups.splice(idx + 1, 0, p);
+      else sortedGroups.push(p); // no primary found, append
+    }
+
+    const typeNames = {1:'Line Array', 2:'Point Source', 3:'Sub Array'};
+    let lastType = null;
+
+    for (const row of sortedGroups) {
+      const [sgId, sgNameRaw, sgType, defSubnet, defDevice, orderIdx] = row;
+      const baseName = (_origSgNames[sgId] || sgNameRaw).trim();
+      const sgName = pairedIds.has(sgId) ? baseName + ' (R)' : (orderIdx >= 0 && row[6] > 0) ? baseName + ' (L)' : baseName;
+      const startId = (defSubnet || 0) + '.' + (defDevice || 1);
+
+      // Section header when type changes
+      if (sgType !== lastType) {
+        container.innerHTML += '<p style="font-family:var(--mono);font-size:0.72rem;letter-spacing:0.15em;color:var(--accent);margin:' + (lastType !== null ? '20px' : '0') + ' 0 8px 0">' + (typeNames[sgType] || 'Other') + 's</p>';
+        lastType = sgType;
+      }
+
+      // Get current cab data with existing amp assignments
+      const cabRes = db.exec(`
+        SELECT c.CabinetId, c.PositionIndex, ca.Name as CabName,
+               d.RemoteIdSubnet, d.RemoteIdDevice, c.AmplifierChannel
+        FROM Cabinets c
+        JOIN CabinetsAdditionalData ca ON c.CabinetId = ca.CabinetId
+        LEFT JOIN Devices d ON c.DeviceId = d.DeviceId
+        WHERE c.SourceGroupId = ? AND c.OrderIndex = 1
+        ORDER BY c.PositionIndex
+      `, [sgId]);
+
+      const cabs = cabRes[0] ? cabRes[0].values.filter(r => !ampIdIsLinear(r[2])) : [];
+      if (!cabs.length) continue;
+
+      const chLabels = {1:'A', 2:'B', 3:'C', 4:'D'};
+      let tableRows = '';
+      let prevAmpId = '';
+      let displayNum = 0;
+      for (const r of cabs) {
+        const [cabId, posIdx, cabName, subnet, device, ampCh] = r;
+        displayNum++;
+        const isDual = ampIdIsDualActive(cabName);
+        const ampId = (subnet != null && device != null) ? subnet + '.' + String(device).padStart(2,'0') : '—';
+        const rowBorder = (ampId !== prevAmpId && prevAmpId && ampId !== '—') ? 'border-top:1px solid var(--border);' : '';
+        const chLabel = ampCh != null
+          ? (isDual ? (ampCh <= 2 ? 'AB' : 'CD') : (chLabels[ampCh] || ampCh))
+          : '—';
+        const modeLabel = isDual
+          ? '<span style="color:var(--accent)">Active</span>'
+          : '<span style="color:var(--muted)">Passive</span>';
+
+        tableRows += '<tr data-cabid="' + cabId + '" data-posidx="' + posIdx + '">';
+        tableRows += '<td style="padding:3px 8px;color:var(--dim)">' + displayNum + '</td>';
+        tableRows += '<td style="padding:3px 8px">' + cabName + '</td>';
+        tableRows += '<td style="padding:3px 8px">' + modeLabel + '</td>';
+        tableRows += '<td class="ampid-col" style="padding:3px 8px;font-weight:bold;cursor:text" contenteditable="true" spellcheck="false" oninput="ampIdMarkEdited(this)" onkeydown="ampIdCellKeydown(event,this)" onblur="ampIdPadAmpId(this)">' + ampId + '</td>';
+        tableRows += '<td class="ampid-ch-col" style="padding:3px 8px;cursor:text" contenteditable="true" spellcheck="false" oninput="ampIdMarkEdited(this)" onblur="ampIdChBlur(this)" onkeydown="ampIdCellKeydown(event,this)" data-prev="" onclick="this.dataset.prev=this.textContent;this.textContent=\'\'">' + chLabel + '</td>';
+        tableRows += '</tr>';
+        prevAmpId = ampId;
+      }
+
+      // Direction dropdown — line arrays don't really need center-out but no harm
+      const dirOpts = (sgType === 2 || sgType === 3)
+        ? '<option value="lr">L→R (top↓)</option><option value="rl">R→L (bottom↑)</option><option value="center">Center Out</option>'
+        : '<option value="lr">Top → Bottom</option><option value="rl">Bottom → Top</option><option value="center">Center Out</option>';
+
+      const cardHtml = '<div class="card" style="margin-bottom:12px" data-sgid="' + sgId + '">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">' +
+          '<p style="font-family:var(--mono);font-size:0.82rem;font-weight:bold;color:var(--text);margin:0;flex:1">' + sgName + '</p>' +
+          '<input type="text" class="ampid-start" value="' + startId + '" style="font-family:var(--mono);font-size:0.76rem;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 6px;width:70px" title="Start ID (subnet.device)">' +
+          '<select class="ampid-dir" style="font-family:var(--mono);font-size:0.72rem;background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 6px">' + dirOpts + '</select>' +
+          '<button class="btn btn-primary" onclick="ampIdAssignGroup(this)" style="background:var(--green);border-color:var(--green);font-size:0.72rem;padding:4px 10px;white-space:nowrap">Go →</button>' +
+        '</div>' +
+        '<table style="width:100%;border-collapse:collapse;font-family:var(--mono);font-size:0.72rem">' +
+        '<thead><tr style="border-bottom:2px solid var(--border);color:var(--muted);text-align:left">' +
+        '<th style="padding:4px 8px">#</th>' +
+        '<th style="padding:4px 8px">Cabinet</th>' +
+        '<th style="padding:4px 8px">Mode</th>' +
+        '<th style="padding:4px 8px">Amp ID</th>' +
+        '<th style="padding:4px 8px">Ch</th>' +
+        '</tr></thead><tbody>' + tableRows + '</tbody></table>' +
+      '</div>';
+
+      container.innerHTML += cardHtml;
+    }
+    db.close();
+  } catch(e) { console.error('populateAmpIdFromProject:', e); }
+}
+
+function ampIdAutoFillRow(fromTr, toTr, direction) {
+  // direction: 1 = forward (increment), -1 = backward (decrement)
+  const toAmpTd = toTr.querySelector('.ampid-col');
+  const toChTd = toTr.querySelector('.ampid-ch-col');
+  if (!toAmpTd) return;
+
+  const curAmpId = fromTr.querySelector('.ampid-col').textContent.trim();
+  const chTd = fromTr.querySelector('.ampid-ch-col');
+  const curCh = (chTd.textContent.trim() || chTd.dataset.prev || '').toUpperCase();
+  const dot = curAmpId.indexOf('.');
+  if (dot < 0) return;
+  let subnet = parseInt(curAmpId.substring(0, dot));
+  let device = parseInt(curAmpId.substring(dot + 1));
+  if (isNaN(subnet) || isNaN(device)) return;
+
+  const toCabName = (toTr.querySelectorAll('td')[1] || {}).textContent?.trim() || '';
+  const toIsActive = ampIdIsDualActive(toCabName);
+
+  let nextCh;
+  if (direction === 1) {
+    // Forward
+    if (toIsActive) {
+      if (curCh === 'AB') { nextCh = 'CD'; }
+      else { device++; if (device > 99) { device = 1; subnet++; } nextCh = 'AB'; }
+    } else {
+      const chOrder = ['A','B','C','D'];
+      const idx = chOrder.indexOf(curCh);
+      if (idx >= 0 && idx < 3) { nextCh = chOrder[idx + 1]; }
+      else { device++; if (device > 99) { device = 1; subnet++; } nextCh = 'A'; }
+    }
+  } else {
+    // Backward (same increment logic, just applied to the row above)
+    if (toIsActive) {
+      if (curCh === 'AB') { nextCh = 'CD'; }
+      else { device++; if (device > 99) { device = 1; subnet++; } nextCh = 'AB'; }
+    } else {
+      const chOrder = ['A','B','C','D'];
+      const idx = chOrder.indexOf(curCh);
+      if (idx >= 0 && idx < 3) { nextCh = chOrder[idx + 1]; }
+      else { device++; if (device > 99) { device = 1; subnet++; } nextCh = 'A'; }
+    }
+  }
+
+  if (subnet < 1) subnet = 1;
+  const nextAmpId = subnet + '.' + String(device).padStart(2, '0');
+  toAmpTd.textContent = nextAmpId;
+  toAmpTd.style.color = 'var(--green)';
+  toChTd.textContent = nextCh;
+  toChTd.style.color = 'var(--green)';
+  toAmpTd.focus();
+  ampIdCheckDuplicates();
+}
+
+function ampIdCellKeydown(e, td) {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const isChCol = td.classList.contains('ampid-ch-col');
+  const isAmpCol = td.classList.contains('ampid-col');
+  const tr = td.closest('tr');
+  if (!tr) return;
+
+  if ((e.metaKey || e.ctrlKey)) {
+    // Restore ch cell if it was cleared by onclick
+    const myChTd = tr.querySelector('.ampid-ch-col');
+    if (myChTd && !myChTd.textContent.trim() && myChTd.dataset.prev) {
+      myChTd.textContent = myChTd.dataset.prev;
+      myChTd.dataset.prev = '';
+    }
+    if (!e.shiftKey) {
+      // Cmd+Enter: move DOWN
+      const targetTr = tr.nextElementSibling;
+      if (!targetTr || !targetTr.dataset.posidx) { td.blur(); return; }
+      ampIdAutoFillRow(tr, targetTr, 1);
+    } else {
+      // Cmd+Shift+Enter: move UP
+      const targetTr = tr.previousElementSibling;
+      if (!targetTr || !targetTr.dataset.posidx) { td.blur(); return; }
+      ampIdAutoFillRow(tr, targetTr, -1);
+    }
+    return;
+  }
+
+  // Plain Enter: move to next editable cell
+  td.blur();
+  if (isAmpCol) {
+    // Move to channel cell in same row
+    const chTd = tr.querySelector('.ampid-ch-col');
+    if (chTd) {
+      chTd.dataset.prev = chTd.textContent;
+      chTd.textContent = '';
+      chTd.focus();
+    }
+  } else if (isChCol) {
+    // Move to amp ID cell in next row
+    const nextTr = tr.nextElementSibling;
+    if (nextTr) {
+      const nextAmpTd = nextTr.querySelector('.ampid-col');
+      if (nextAmpTd) nextAmpTd.focus();
+    }
+  }
+}
+
+function ampIdPadAmpId(td) {
+  const val = td.textContent.trim();
+  if (!val) return;
+  const dot = val.indexOf('.');
+  if (dot < 0) return;
+  const subnet = parseInt(val.substring(0, dot));
+  const device = parseInt(val.substring(dot + 1));
+  if (isNaN(subnet) || isNaN(device)) return;
+  const padded = subnet + '.' + String(device).padStart(2, '0');
+  if (td.textContent !== padded) td.textContent = padded;
+}
+
+function ampIdMarkEdited(td) {
+  const isChCol = td.classList.contains('ampid-ch-col');
+  if (isChCol) {
+    let val = td.textContent.replace(/[^A-Da-d]/g, '').toUpperCase();
+    const tr = td.closest('tr');
+    const cabName = tr ? (tr.querySelectorAll('td')[1] || {}).textContent?.trim() || '' : '';
+    const isActive = ampIdIsDualActive(cabName);
+    if (isActive) {
+      // Active: only AB or CD valid. Single letter → expand immediately
+      val = val.charAt(0);
+      if (val === 'A' || val === 'B') val = 'AB';
+      else if (val === 'C' || val === 'D') val = 'CD';
+      else val = '';
+    } else {
+      // Passive: single channel A/B/C/D
+      if (val.length > 1) val = val.charAt(0);
+      if (val && !['A','B','C','D'].includes(val)) val = '';
+    }
+    if (td.textContent !== val) {
+      td.textContent = val;
+      try {
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(td);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      } catch(e) {}
+    }
+    const finalValid = isActive ? ['AB','CD'] : ['A','B','C','D'];
+    td.style.color = finalValid.includes(val) ? 'var(--green)' : '';
+  } else {
+    td.style.color = 'var(--green)';
+  }
+  ampIdCheckDuplicates();
+}
+
+function ampIdChBlur(td) {
+  let val = td.textContent.trim().toUpperCase();
+  // Restore previous value if left empty
+  if (!val && td.dataset.prev) {
+    td.textContent = td.dataset.prev;
+    td.dataset.prev = '';
+    return;
+  }
+  // Auto-expand on blur for dual/active cabs: A → AB, C → CD
+  if (val === 'A' || val === 'C') {
+    const tr = td.closest('tr');
+    if (tr) {
+      const cabName = (tr.querySelectorAll('td')[1] || {}).textContent || '';
+      if (ampIdIsDualActive(cabName.trim())) {
+        td.textContent = val === 'A' ? 'AB' : 'CD';
+        td.style.color = 'var(--green)';
+        ampIdCheckDuplicates();
+      }
+    }
+  }
+  td.dataset.prev = '';
+}
+
+function ampIdChannelSet(ch) {
+  // Expand channel string to set of individual channels it occupies
+  // A+B → {A,B}, C+D → {C,D}, A → {A}, etc.
+  if (!ch) return new Set();
+  if (ch === 'AB' || ch === 'A+B') return new Set(['A','B']);
+  if (ch === 'CD' || ch === 'C+D') return new Set(['C','D']);
+  return new Set([ch]);
+}
+
+function ampIdCheckDuplicates() {
+  // Gather all amp ID + channel entries
+  const allEntries = [];
+  document.querySelectorAll('#ampIdGroups [data-sgid]').forEach(card => {
+    card.querySelectorAll('tbody tr').forEach(tr => {
+      const tds = tr.querySelectorAll('td');
+      if (tds.length < 5) return;
+      const ampTd = tds[3], chTd = tds[4];
+      const ampId = ampTd.textContent.trim();
+      const ch = chTd.textContent.trim().toUpperCase();
+      if (ampId === '—' || !ampId || !ch) return;
+      allEntries.push({ ampTd, chTd, ampId, chSet: ampIdChannelSet(ch), clash: false });
+    });
+  });
+
+  // Check every pair for channel overlap on same amp
+  for (let i = 0; i < allEntries.length; i++) {
+    for (let j = i + 1; j < allEntries.length; j++) {
+      const a = allEntries[i], b = allEntries[j];
+      if (a.ampId !== b.ampId) continue;
+      // Check if channel sets overlap
+      for (const ch of a.chSet) {
+        if (b.chSet.has(ch)) { a.clash = true; b.clash = true; break; }
+      }
+    }
+  }
+
+  // Apply colors — red on ALL clashing cells, restore green on non-clashing edited ones
+  for (const e of allEntries) {
+    if (e.clash) {
+      e.ampTd.style.color = 'var(--red, #e55)';
+      e.chTd.style.color = 'var(--red, #e55)';
+    } else {
+      // If was red, restore to green (it was edited or assigned)
+      if (e.ampTd.style.color === 'var(--red, #e55)') e.ampTd.style.color = 'var(--green)';
+      if (e.chTd.style.color === 'var(--red, #e55)') e.chTd.style.color = 'var(--green)';
+    }
+  }
+}
+
+function ampIdAssignGroup(btn) {
+  if (!metricDbBytes) return;
+  const card = btn.closest('[data-sgid]');
+  const sgId = parseInt(card.dataset.sgid);
+  const startVal = card.querySelector('.ampid-start').value.trim();
+  const direction = card.querySelector('.ampid-dir').value;
+
+  const parts = startVal.match(/^(\d+)\.(\d+)$/);
+  if (!parts) { alert('Start ID must be subnet.device (e.g. 0.1)'); return; }
+  let subnet = parseInt(parts[1]);
+  let device = parseInt(parts[2]);
+
+  try {
+    const db = new SQL.Database(new Uint8Array(metricDbBytes));
+    const cabRes = db.exec(`
+      SELECT c.CabinetId, c.PositionIndex, ca.Name as CabName
+      FROM Cabinets c
+      JOIN CabinetsAdditionalData ca ON c.CabinetId = ca.CabinetId
+      WHERE c.SourceGroupId = ? AND c.OrderIndex = 1
+      ORDER BY c.PositionIndex
+    `, [sgId]);
+    db.close();
+    if (!cabRes[0]) return;
+
+    let cabs = cabRes[0].values
+      .filter(r => !ampIdIsLinear(r[2]))
+      .map(r => ({ cabId: r[0], posIdx: r[1], cabName: r[2] }));
+
+    // Apply direction ordering for assignment
+    let assignOrder;
+    if (direction === 'rl') {
+      assignOrder = cabs.slice().reverse();
+    } else if (direction === 'center') {
+      // Center out: start from middle, spiral outward
+      // For 8 cabs (indices 0-7): 3,4,2,5,1,6,0,7  (or 4,3,5,2,6,1,7,0 for even)
+      const sorted = cabs.slice();
+      const out = [];
+      const mid = Math.floor(sorted.length / 2);
+      if (sorted.length % 2 === 1) {
+        // Odd: center element first, then alternate outward
+        out.push(sorted[mid]);
+        for (let i = 1; i <= mid; i++) {
+          if (mid - i >= 0) out.push(sorted[mid - i]);
+          if (mid + i < sorted.length) out.push(sorted[mid + i]);
+        }
+      } else {
+        // Even: two center elements first (mid-1, mid), then alternate outward
+        out.push(sorted[mid - 1]);
+        out.push(sorted[mid]);
+        for (let i = 1; i < mid; i++) {
+          if (mid - 1 - i >= 0) out.push(sorted[mid - 1 - i]);
+          if (mid + i < sorted.length) out.push(sorted[mid + i]);
+        }
+      }
+      assignOrder = out;
+    } else {
+      assignOrder = cabs.slice();
+    }
+
+    // Assign amp IDs sequentially through the ordered list
+    let channelSlot = 0;
+    let currentAmpMode = null;
+    let currentSubnet = subnet;
+    let currentDevice = device;
+
+    const chLabels = {1:'A', 2:'B', 3:'C', 4:'D'};
+    // Map posIdx -> assignment for display
+    const assignMap = new Map();
+
+    for (const cab of assignOrder) {
+      const isDual = ampIdIsDualActive(cab.cabName);
+
+      let fits = false;
+      if (currentAmpMode === null) {
+        fits = true;
+        currentAmpMode = isDual ? 'dual' : 'passive';
+      } else if (currentAmpMode === 'dual' && isDual) {
+        fits = channelSlot < 2;
+      } else if (currentAmpMode === 'passive' && !isDual) {
+        fits = channelSlot < 4;
+      } else if (isDual && currentAmpMode === 'passive') {
+        fits = channelSlot <= 2;
+      } else if (!isDual && currentAmpMode === 'dual') {
+        fits = channelSlot < 2;
+      }
+
+      if (!fits) {
+        device++;
+        if (device > 99) { device = 1; subnet++; }
+        currentSubnet = subnet;
+        currentDevice = device;
+        channelSlot = 0;
+        currentAmpMode = isDual ? 'dual' : 'passive';
+      }
+
+      // Capture amp ID BEFORE potential advance to next amp
+      const assignSubnet = currentSubnet;
+      const assignDevice = currentDevice;
+
+      let ampChannel;
+      if (isDual) {
+        ampChannel = channelSlot === 0 ? 1 : 3;
+        channelSlot++;
+        if (channelSlot >= 2 && currentAmpMode === 'dual') {
+          device++;
+          if (device > 99) { device = 1; subnet++; }
+          currentSubnet = subnet;
+          currentDevice = device;
+          channelSlot = 0;
+          currentAmpMode = null;
+        }
+      } else {
+        ampChannel = channelSlot + 1;
+        channelSlot++;
+        if (channelSlot >= 4) {
+          device++;
+          if (device > 99) { device = 1; subnet++; }
+          currentSubnet = subnet;
+          currentDevice = device;
+          channelSlot = 0;
+          currentAmpMode = null;
+        }
+      }
+
+      assignMap.set(cab.posIdx, {
+        posIdx: cab.posIdx, cabName: cab.cabName, isDual,
+        subnet: assignSubnet, device: assignDevice, ampChannel
+      });
+    }
+
+    // Update table rows in position order (don't re-sort, rows stay in DOM order)
+    const tbody = card.querySelector('tbody');
+    const rows = tbody.querySelectorAll('tr');
+    const ampSet = new Set();
+    let prevAmpId = '';
+    for (const tr of rows) {
+      const posIdx = parseInt(tr.dataset.posidx);
+      const a = assignMap.get(posIdx);
+      if (!a) continue;
+      const ampId = a.subnet + '.' + String(a.device).padStart(2,'0');
+      const chLabel = a.isDual ? (a.ampChannel === 1 ? 'AB' : 'CD') : (chLabels[a.ampChannel] || a.ampChannel);
+
+      const tds = tr.querySelectorAll('td');
+      tds[3].textContent = ampId;
+      tds[3].style.color = 'var(--green)';
+      tds[4].textContent = chLabel;
+      tds[4].style.color = 'var(--green)';
+
+      // Update row borders
+      tr.style.borderTop = (ampId !== prevAmpId && prevAmpId) ? '1px solid var(--border)' : '';
+      ampSet.add(ampId);
+      prevAmpId = ampId;
+    }
+    // tally removed — rack build tab handles this now
+    ampIdCheckDuplicates();
+
+  } catch(e) { console.error('ampIdAssignGroup:', e); alert('Error: ' + e.message); }
+}
+
+function ampIdExportDbpr() {
+  if (!metricDbBytes) { alert('No .dbpr loaded — go to Import tab first.'); return; }
+  try {
+    const db = new SQL.Database(new Uint8Array(metricDbBytes));
+
+    // Channel string → AmplifierChannel number
+    const chMap = {'A':1,'B':2,'C':3,'D':4,'AB':1,'CD':3,'A+B':1,'C+D':3};
+
+    // Collect all assignments from DOM
+    const assignments = []; // {sgId, posIdx, subnet, device, ampCh, key}
+    const ampIds = new Map(); // "subnet.device" → {subnet, device}
+    const ampSubsystem = new Map(); // "subnet.device" → subsystem name (from first SG using it)
+    const ampChannelSubs = new Map(); // "subnet.device.ch" → subsystem name per channel
+
+    document.querySelectorAll('#ampIdGroups [data-sgid]').forEach(card => {
+      const sgId = parseInt(card.dataset.sgid);
+      // Get subsystem name from card title (original SG name without A/B suffix)
+      const cardTitle = card.querySelector('p')?.textContent?.replace(/\s*\([AB]\)\s*$/, '').trim() || '';
+      card.querySelectorAll('tbody tr').forEach(tr => {
+        const posIdx = parseInt(tr.dataset.posidx);
+        const tds = tr.querySelectorAll('td');
+        if (tds.length < 5) return;
+        const ampIdStr = tds[3].textContent.trim();
+        const chStr = tds[4].textContent.trim().toUpperCase();
+        if (ampIdStr === '—' || !ampIdStr || !chStr || chStr === '—') return;
+        const ampCh = chMap[chStr];
+        if (!ampCh) return;
+
+        const dot = ampIdStr.indexOf('.');
+        if (dot < 0) return;
+        const subnet = parseInt(ampIdStr.substring(0, dot));
+        const device = parseInt(ampIdStr.substring(dot + 1));
+        if (isNaN(subnet) || isNaN(device)) return;
+
+        const key = subnet + '.' + String(device).padStart(2, '0');
+        ampIds.set(key, { subnet, device });
+        if (!ampSubsystem.has(key)) ampSubsystem.set(key, cardTitle);
+        ampChannelSubs.set(key + '.' + ampCh, cardTitle);
+        assignments.push({ sgId, posIdx, subnet, device, ampCh, key });
+      });
+    });
+
+    if (!assignments.length) { alert('No amp ID assignments to export.'); db.close(); return; }
+
+    // Determine which SpeakerIds are 2-way active vs dual-channel (passive)
+    // Active: appears on a device where OutputMode=8 and only uses ch1/ch3 (2-way active uses A+B or C+D per cab)
+    // We identify from devices with OutputMode=8 (both pairs active) — their SpeakerIds are active
+    const activeSpeakers = new Set();
+    const actRes = db.exec(`SELECT DISTINCT c.SpeakerId FROM Cabinets c
+      JOIN DevicesAmplifier da ON c.DeviceId = da.DeviceId
+      WHERE c.OrderIndex = 1 AND da.OutputMode = 8 AND c.DeviceId > 0`);
+    if (actRes[0]) for (const r of actRes[0].values) activeSpeakers.add(r[0]);
+
+    // OutputMode per amp = based on what's on each channel pair:
+    //   A+B (ch 1,2) active + C+D (ch 3,4) active = 8
+    //   A+B active + C+D passive = 2
+    //   A+B passive + C+D active = 4
+    //   both passive = 0
+    // Track per amp key: which channel pairs have active cabs
+    const ampABActive = new Map(); // key → bool (any active speaker on ch 1 or 2)
+    const ampCDActive = new Map(); // key → bool (any active speaker on ch 3 or 4)
+    for (const a of assignments) {
+      const spkRes = db.exec('SELECT SpeakerId FROM Cabinets WHERE SourceGroupId=? AND PositionIndex=? AND OrderIndex=1', [a.sgId, a.posIdx]);
+      if (spkRes[0]) {
+        for (const r of spkRes[0].values) {
+          const isActive = activeSpeakers.has(r[0]);
+          if (a.ampCh <= 2) { // A+B pair
+            if (isActive) ampABActive.set(a.key, true);
+            else if (!ampABActive.has(a.key)) ampABActive.set(a.key, false);
+          } else { // C+D pair
+            if (isActive) ampCDActive.set(a.key, true);
+            else if (!ampCDActive.has(a.key)) ampCDActive.set(a.key, false);
+          }
+        }
+      }
+    }
+    const ampOutputMode = new Map();
+    for (const key of ampIds.keys()) {
+      const ab = ampABActive.get(key) || false;
+      const cd = ampCDActive.get(key) || false;
+      ampOutputMode.set(key, (ab && cd) ? 8 : ab ? 2 : cd ? 4 : 0);
+    }
+
+    // Capture InputMode from old devices
+    const ampInputMode = new Map();
+    for (const a of assignments) {
+      if (ampInputMode.has(a.key)) continue;
+      const imRes = db.exec(`SELECT da.InputMode FROM Cabinets c
+        JOIN DevicesAmplifier da ON c.DeviceId = da.DeviceId
+        WHERE c.SourceGroupId=? AND c.PositionIndex=? AND c.DeviceId > 0 LIMIT 1`, [a.sgId, a.posIdx]);
+      if (imRes[0] && imRes[0].values[0]) ampInputMode.set(a.key, imRes[0].values[0][0]);
+    }
+
+    // Collect all CabinetIds being reassigned (all OrderIndex rows at each sgId+posIdx)
+    const reassignedCabIds = new Set();
+    for (const a of assignments) {
+      const cabRows = db.exec('SELECT CabinetId FROM Cabinets WHERE SourceGroupId=? AND PositionIndex=?', [a.sgId, a.posIdx]);
+      if (cabRows[0]) for (const r of cabRows[0].values) reassignedCabIds.add(r[0]);
+    }
+
+    // Find which existing DeviceIds are still referenced by cabinets we're NOT touching
+    const usedDeviceIds = new Set();
+    const allCabs = db.exec('SELECT CabinetId, DeviceId FROM Cabinets WHERE DeviceId > 0');
+    if (allCabs[0]) {
+      for (const r of allCabs[0].values) {
+        if (!reassignedCabIds.has(r[0])) usedDeviceIds.add(r[1]);
+      }
+    }
+
+    // Delete orphaned amp Device rows (only D80s — preserve ArraySight and other non-amp devices)
+    const allDevs = db.exec("SELECT DeviceId FROM Devices WHERE Model='D80'");
+    if (allDevs[0]) {
+      for (const r of allDevs[0].values) {
+        if (!usedDeviceIds.has(r[0])) {
+          db.run('DELETE FROM Devices WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM DevicesAmplifier WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM AmplifierChannels WHERE DeviceId=?', [r[0]]);
+        }
+      }
+    }
+
+    // Find max DeviceId for creating new ones
+    const maxIdRes = db.exec('SELECT MAX(DeviceId) FROM Devices');
+    let nextDeviceId = (maxIdRes[0] && maxIdRes[0].values[0][0]) ? maxIdRes[0].values[0][0] + 1 : 1;
+
+    // Create a new Device row for each unique amp ID
+    const deviceIdMap = new Map();
+    for (const [key, info] of ampIds) {
+      const subsys = ampSubsystem.get(key) || '';
+      const devName = subsys ? subsys + ' ' + key : key;
+      db.run('INSERT INTO Devices (DeviceId, Model, RemoteIdSubnet, RemoteIdDevice, Name) VALUES (?,?,?,?,?)',
+        [nextDeviceId, 'D80', info.subnet, info.device, devName]);
+      const inMode = ampInputMode.get(key) ?? 4;
+      const outMode = ampOutputMode.get(key) ?? 0;
+      db.run('INSERT INTO DevicesAmplifier (DeviceId, InputMode, OutputMode) VALUES (?,?,?)',
+        [nextDeviceId, inMode, outMode]);
+      for (let ch = 1; ch <= 4; ch++) {
+        // Set channel name to subsystem name of whatever is assigned to this channel
+        const chSub = ampChannelSubs.get(key + '.' + ch) || subsys || '';
+        const chName = chSub ? chSub + ' ' : '';
+        db.run('INSERT INTO AmplifierChannels (DeviceId, AmplifierChannel, Name) VALUES (?,?,?)',
+          [nextDeviceId, ch, chName]);
+      }
+      deviceIdMap.set(key, nextDeviceId);
+      nextDeviceId++;
+    }
+
+    // Collect old→new mappings for Groups table update, then update Cabinets
+    const groupUpdates = []; // {oldDev, oldCh, newDev, newCh}
+    for (const a of assignments) {
+      const newDevId = deviceIdMap.get(a.key);
+      if (newDevId == null) continue;
+      // Get current DeviceId+Ch before overwriting (any row at this sgId+posIdx — they all share the same device)
+      const oldRows = db.exec('SELECT DeviceId, AmplifierChannel FROM Cabinets WHERE SourceGroupId=? AND PositionIndex=? LIMIT 1', [a.sgId, a.posIdx]);
+      if (oldRows[0] && oldRows[0].values[0]) {
+        const [oldDev, oldCh] = oldRows[0].values[0];
+        if (oldDev > 0) {
+          groupUpdates.push({ oldDev, oldCh, newDev: newDevId, newCh: a.ampCh });
+        }
+      }
+      db.run('UPDATE Cabinets SET DeviceId=?, AmplifierChannel=? WHERE SourceGroupId=? AND PositionIndex=?',
+        [newDevId, a.ampCh, a.sgId, a.posIdx]);
+    }
+
+    // Update Groups table — R1 output routing references (TargetId=DeviceId, TargetChannel=AmplifierChannel)
+    const hasGroups = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='Groups'");
+    if (hasGroups[0]) {
+      for (const g of groupUpdates) {
+        db.run('UPDATE Groups SET TargetId=?, TargetChannel=? WHERE TargetId=? AND TargetChannel=?',
+          [g.newDev, g.newCh, g.oldDev, g.oldCh]);
+      }
+    }
+
+    // Restore original SourceGroup names (import modifies them with pinning data)
+    for (const [sgId, origName] of Object.entries(_origSgNames)) {
+      db.run('UPDATE SourceGroups SET Name=? WHERE SourceGroupId=?', [origName, parseInt(sgId)]);
+    }
+
+    const data = db.export();
+    db.close();
+    const blob = new Blob([data], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const base = origFileName.replace(/\.[^.]+$/, '');
+    a.download = base + '_ampid.dbpr';
+    a.click();
+    URL.revokeObjectURL(url);
+
+  } catch(e) { console.error('ampIdExportDbpr:', e); alert('Error: ' + e.message); }
+}
+
+// ══════════════════════════════════════
+//  RACK BUILD
+// ══════════════════════════════════════
+let _rackCounter = 0;
+
+function rackBuildPopulate() {
+  // Pull cab data directly from the project DB — independent of Amp ID tab
+  const list = document.getElementById('rackAmpList');
+  const noMsg = document.getElementById('rackNoProjMsg');
+  const content = document.getElementById('rackBuildContent');
+  if (!list) return;
+
+  if (!metricDbBytes) {
+    if (noMsg) noMsg.style.display = '';
+    if (content) content.style.display = 'none';
+    return;
+  }
+
+  const cabs = []; // {key, cabName, sgName, isActive, slots}
+  try {
+    const db = new SQL.Database(new Uint8Array(metricDbBytes));
+    const sgRes = db.exec(`
+      SELECT sg.SourceGroupId, sg.Name, sg.OrderIndex, sg.NextSourceGroupId
+      FROM SourceGroups sg
+      WHERE sg.Type IN (1,2,3)
+      ORDER BY sg.Type, sg.OrderIndex
+    `);
+    if (!sgRes[0]) { db.close(); return; }
+
+    const pairedIds = new Set();
+    for (const row of sgRes[0].values) {
+      if (row[3] > 0) pairedIds.add(row[3]);
+    }
+
+    for (const row of sgRes[0].values) {
+      const [sgId, sgNameRaw, orderIdx, nextSgId] = row;
+      const baseName = (_origSgNames[sgId] || sgNameRaw).trim();
+      const sgName = pairedIds.has(sgId) ? baseName + ' (R)' : (orderIdx >= 0 && nextSgId > 0) ? baseName + ' (L)' : baseName;
+
+      const cabRes = db.exec(`
+        SELECT c.CabinetId, c.PositionIndex, ca.Name as CabName
+        FROM Cabinets c
+        JOIN CabinetsAdditionalData ca ON c.CabinetId = ca.CabinetId
+        WHERE c.SourceGroupId = ? AND c.OrderIndex = 1
+        ORDER BY c.PositionIndex
+      `, [sgId]);
+      if (!cabRes[0]) continue;
+
+      let posNum = 0;
+      for (const r of cabRes[0].values) {
+        const [cabId, posIdx, cabName] = r;
+        if (ampIdIsLinear(cabName)) continue;
+        posNum++;
+        const isActive = ampIdIsDualActive(cabName);
+        const key = sgId + ':' + cabId;
+        cabs.push({ key, cabId, cabName, sgName, sgId, posIdx, posNum, isActive, slots: isActive ? 2 : 1 });
+      }
+    }
+    db.close();
+  } catch(e) { console.error('rackBuildPopulate:', e); return; }
+
+  if (cabs.length === 0) {
+    if (noMsg) noMsg.style.display = '';
+    if (content) content.style.display = 'none';
+    return;
+  }
+  if (noMsg) noMsg.style.display = 'none';
+  if (content) content.style.display = '';
+
+  // Only show cabs not already placed in a rack
+  const inRack = new Set();
+  document.querySelectorAll('#rackContainer .rack-ch-item').forEach(el => {
+    inRack.add(el.dataset.chkey);
+  });
+
+  list.innerHTML = '';
+  let lastSg = null;
+  let sgGroup = null;
+  for (const c of cabs) {
+    // Group by subsystem with a bordered container
+    if (c.sgName !== lastSg) {
+      sgGroup = document.createElement('div');
+      sgGroup.style.cssText = 'border:1px solid var(--border);border-radius:5px;padding:4px;margin:6px 0';
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'font-family:var(--mono);font-size:0.62rem;color:var(--accent);padding:1px 4px;margin-bottom:2px;letter-spacing:0.08em';
+      hdr.textContent = c.sgName;
+      sgGroup.appendChild(hdr);
+      list.appendChild(sgGroup);
+      lastSg = c.sgName;
+    }
+    if (inRack.has(c.key)) continue;
+    const el = document.createElement('div');
+    el.className = 'rack-ch-item';
+    el.dataset.chkey = c.key;
+    el.dataset.cabname = c.cabName;
+    el.dataset.sgname = c.sgName;
+    el.dataset.sgid = c.sgId;
+    el.dataset.posidx = c.posIdx;
+    el.dataset.posnum = c.posNum;
+    el.dataset.slots = c.slots;
+    el.draggable = true;
+    const modeTag = c.isActive
+      ? '<span style="color:var(--accent);font-size:0.6rem;margin-left:4px">2ch</span>'
+      : '';
+    el.style.cssText = 'font-family:var(--mono);font-size:0.72rem;padding:4px 8px;margin:1px 0;background:var(--bg);border:1px solid var(--border);border-radius:3px;cursor:grab;display:flex;justify-content:space-between;align-items:center';
+    el.innerHTML = '<label style="display:flex;align-items:center;gap:4px;cursor:grab;flex:1;min-width:0"><input type="checkbox" class="rack-sel-cb" style="margin:0;cursor:pointer"><span style="color:var(--dim);font-size:0.62rem">#' + c.posNum + '</span><span style="font-weight:bold">' + c.cabName + '</span>' + modeTag + '</label>' +
+      '<button class="rack-assign-btn" onclick="rackAssignNext(this.closest(\'.rack-ch-item\'))" style="font-family:var(--mono);font-size:0.72rem;background:none;border:1px solid var(--border);color:var(--muted);border-radius:3px;padding:0 5px;cursor:pointer;line-height:1.4" title="Assign to next available slot">→</button>';
+    el.addEventListener('dragstart', rackDragStart);
+    sgGroup.appendChild(el);
+  }
+}
+
+
+function rackBuildCreate() {
+  const count = parseInt(document.getElementById('rackCount').value) || 1;
+  const ampsPerRack = parseInt(document.getElementById('rackAmpsPerRack').value) || 3;
+  const container = document.getElementById('rackContainer');
+
+  for (let i = 0; i < count; i++) {
+    _rackCounter++;
+    const rack = document.createElement('div');
+    rack.className = 'rack-box';
+    rack.style.cssText = 'border:1px solid var(--border);border-radius:6px;padding:8px;width:340px;flex:0 0 340px;background:var(--panel)';
+
+    let ampsHtml = '';
+    for (let a = 0; a < ampsPerRack; a++) {
+      const chLabels = ['A','B','C','D'];
+      let chSlots = '';
+      for (let c = 0; c < 4; c++) {
+        chSlots += '<div class="rack-slot" data-amp="' + a + '" data-ch="' + chLabels[c] + '" style="border:1px dashed var(--border);border-radius:3px;padding:4px 2px;min-height:24px;font-family:var(--mono);font-size:0.62rem;color:var(--muted);text-align:center;flex:1">' + chLabels[c] + '</div>';
+      }
+      ampsHtml += '<div class="rack-amp" data-ampslot="' + a + '" style="border:1px solid var(--border);border-radius:4px;padding:4px;margin:3px 0">' +
+        '<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px">' +
+          '<span style="font-family:var(--mono);font-size:0.58rem;color:var(--dim)">ID:</span>' +
+          '<input type="text" class="rack-amp-id" placeholder="—" style="font-family:var(--mono);font-size:0.68rem;font-weight:bold;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:3px;padding:1px 4px;width:50px;text-align:center" onblur="rackPadAmpId(this)">' +
+        '</div>' +
+        '<div style="display:flex;gap:3px">' + chSlots + '</div>' +
+      '</div>';
+    }
+
+    rack.innerHTML =
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+        '<input type="text" value="Rack ' + _rackCounter + '" style="font-family:var(--mono);font-size:0.76rem;font-weight:bold;background:transparent;color:var(--text);border:1px solid transparent;border-radius:4px;padding:2px 4px;flex:1;min-width:0" onfocus="this.style.borderColor=\'var(--border)\'" onblur="this.style.borderColor=\'transparent\'">' +
+        '<button onclick="rackDelete(this)" style="font-family:var(--mono);font-size:0.68rem;background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 8px;cursor:pointer" title="Delete rack">✕</button>' +
+      '</div>' +
+      ampsHtml;
+
+    // Set up drop zones on channel slots and amp divs
+    rack.querySelectorAll('.rack-slot').forEach(slot => {
+      slot.addEventListener('dragover', rackDragOver);
+      slot.addEventListener('dragleave', rackDragLeave);
+      slot.addEventListener('drop', rackDrop);
+    });
+    rack.querySelectorAll('.rack-amp').forEach(amp => {
+      amp.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+      amp.addEventListener('drop', rackDrop);
+    });
+
+    container.appendChild(rack);
+  }
+}
+
+function rackDelete(btn) {
+  const rack = btn.closest('.rack-box');
+  if (!rack) return;
+  rack.querySelectorAll('.rack-ch-item').forEach(item => item.remove());
+  rack.remove();
+  rackBuildPopulate();
+}
+
+let _rackDragItem = null;
+let _rackDragItems = [];
+
+function rackDragStart(e) {
+  _rackDragItem = e.target.closest('.rack-ch-item');
+  // If dragging from unassigned list, include all checked items
+  if (!_rackDragItem.closest('.rack-slot')) {
+    const checked = [...document.querySelectorAll('#rackAmpList .rack-ch-item')].filter(el => {
+      const cb = el.querySelector('.rack-sel-cb');
+      return cb && cb.checked;
+    });
+    // If dragged item is checked, drag all checked; otherwise just the one
+    const draggedCb = _rackDragItem.querySelector('.rack-sel-cb');
+    if (draggedCb && draggedCb.checked && checked.length > 1) {
+      _rackDragItems = checked;
+    } else {
+      _rackDragItems = [_rackDragItem];
+    }
+  } else {
+    _rackDragItems = [_rackDragItem];
+  }
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', _rackDragItems.length + ' cabs');
+  setTimeout(() => { _rackDragItems.forEach(it => it.style.opacity = '0.4'); }, 0);
+}
+
+function rackDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  const slot = e.target.closest('.rack-slot');
+  if (slot) slot.style.borderColor = 'var(--green)';
+}
+
+function rackDragLeave(e) {
+  const slot = e.target.closest('.rack-slot');
+  if (slot) slot.style.borderColor = 'var(--border)';
+}
+
+function rackDrop(e) {
+  e.preventDefault();
+  const slot = e.target.closest('.rack-slot');
+  if (!slot) return;
+  slot.style.borderColor = 'var(--border)';
+  if (!_rackDragItems.length) return;
+
+  const ampDiv = slot.closest('.rack-amp');
+  const rackBox = slot.closest('.rack-box');
+  if (!ampDiv && !rackBox) { _rackDragItems.forEach(it => it.style.opacity = '1'); _rackDragItems = []; _rackDragItem = null; return; }
+
+  if (_rackDragItems.length === 1) {
+    // Single cab drop — place in specific slot
+    rackPlaceSingle(_rackDragItems[0], slot, ampDiv);
+  } else {
+    // Multi-cab drop — fill sequentially starting from drop target amp, spilling to next amps
+    rackPlaceMulti(_rackDragItems, ampDiv || slot.closest('.rack-amp'), rackBox);
+  }
+
+  _rackDragItems = [];
+  _rackDragItem = null;
+  rackBuildPopulate();
+}
+
+function rackPlaceSingle(item, slot, ampDiv) {
+  const isActive = parseInt(item.dataset.slots) === 2;
+  const ch = slot.dataset.ch;
+  if (!ampDiv) { item.style.opacity = '1'; return; }
+
+  let targetSlots = [];
+  if (isActive) {
+    const pair = (ch === 'A' || ch === 'B') ? ['A','B'] : ['C','D'];
+    targetSlots = pair.map(l => ampDiv.querySelector('.rack-slot[data-ch="' + l + '"]')).filter(Boolean);
+    if (targetSlots.length < 2) { item.style.opacity = '1'; return; }
+  } else {
+    targetSlots = [slot];
+  }
+
+  targetSlots.forEach(s => { const ex = s.querySelector('.rack-ch-item'); if (ex) ex.remove(); });
+  rackRestoreOldSlots(item);
+
+  const primary = targetSlots[0];
+  primary.textContent = '';
+  item.style.opacity = '1';
+  item.classList.remove('rack-selected');
+  rackItemToSlotView(item);
+  primary.appendChild(item);
+
+  if (isActive && targetSlots[1]) {
+    const sec = targetSlots[1];
+    sec.textContent = '';
+    sec.style.display = 'none';
+    sec.dataset.mergedInto = primary.dataset.ch;
+    primary.style.flex = '2';
+    primary.style.borderStyle = 'solid';
+    primary.style.borderColor = 'var(--accent)';
+  }
+}
+
+function rackPlaceMulti(items, startAmp, rackBox) {
+  const allAmps = [...rackBox.querySelectorAll('.rack-amp')];
+  const startIdx = allAmps.indexOf(startAmp);
+  if (startIdx < 0) return;
+
+  // Build flat list of empty slots from startAmp onward: A, B, C, D per amp
+  const emptySlots = [];
+  for (let ai = startIdx; ai < allAmps.length; ai++) {
+    const amp = allAmps[ai];
+    for (const ch of ['A','B','C','D']) {
+      const s = amp.querySelector('.rack-slot[data-ch="' + ch + '"]');
+      if (s && !s.querySelector('.rack-ch-item') && s.style.display !== 'none') {
+        emptySlots.push(s);
+      }
+    }
+  }
+
+  let si = 0;
+  for (const item of items) {
+    if (si >= emptySlots.length) break;
+    const isActive = parseInt(item.dataset.slots) === 2;
+    rackRestoreOldSlots(item);
+    item.style.opacity = '1';
+    item.classList.remove('rack-selected');
+
+    if (isActive) {
+      // Find next slot that starts a pair (A or C)
+      while (si < emptySlots.length) {
+        const s = emptySlots[si];
+        const ch = s.dataset.ch;
+        if (ch === 'A' || ch === 'C') {
+          const pairCh = ch === 'A' ? 'B' : 'D';
+          const ampDiv = s.closest('.rack-amp');
+          const sec = ampDiv.querySelector('.rack-slot[data-ch="' + pairCh + '"]');
+          if (sec && !sec.querySelector('.rack-ch-item') && sec.style.display !== 'none') {
+            // Place in pair
+            s.textContent = '';
+            rackItemToSlotView(item);
+            s.appendChild(item);
+            sec.textContent = '';
+            sec.style.display = 'none';
+            sec.dataset.mergedInto = s.dataset.ch;
+            s.style.flex = '2';
+            s.style.borderStyle = 'solid';
+            s.style.borderColor = 'var(--accent)';
+            // Remove sec from emptySlots
+            const secIdx = emptySlots.indexOf(sec);
+            if (secIdx > si) emptySlots.splice(secIdx, 1);
+            si++;
+            break;
+          }
+        }
+        si++;
+      }
+    } else {
+      // Passive: fill one slot
+      const s = emptySlots[si];
+      s.textContent = '';
+      rackItemToSlotView(item);
+      s.appendChild(item);
+      si++;
+    }
+  }
+}
+
+function rackRestoreOldSlots(item) {
+  const oldSlot = item.closest('.rack-slot');
+  if (!oldSlot) return;
+  const oldAmp = oldSlot.closest('.rack-amp');
+  if (!oldAmp) return;
+  // Find any merged slot pointing to this one
+  const merged = oldAmp.querySelector('.rack-slot[data-merged-into="' + oldSlot.dataset.ch + '"]')
+    || oldAmp.querySelector('[data-mergedInto="' + oldSlot.dataset.ch + '"]');
+  if (oldSlot && !oldSlot.querySelector('.rack-ch-item:not([style*="opacity: 0.4"])') || oldSlot.querySelectorAll('.rack-ch-item').length <= 1) {
+    // Will be empty after removal
+    oldSlot.style.flex = '1';
+    oldSlot.style.borderStyle = 'dashed';
+    oldSlot.style.borderColor = 'var(--border)';
+    setTimeout(() => {
+      if (!oldSlot.querySelector('.rack-ch-item')) oldSlot.textContent = oldSlot.dataset.ch;
+    }, 0);
+  }
+  if (merged) {
+    delete merged.dataset.mergedInto;
+    merged.style.display = '';
+    merged.textContent = merged.dataset.ch;
+  }
+}
+
+function rackAssignNext(item) {
+  // If this item is checked, assign all checked items; otherwise just this one
+  const cb = item.querySelector('.rack-sel-cb');
+  let items;
+  if (cb && cb.checked) {
+    items = [...document.querySelectorAll('#rackAmpList .rack-ch-item')].filter(el => {
+      const c = el.querySelector('.rack-sel-cb');
+      return c && c.checked;
+    });
+  } else {
+    items = [item];
+  }
+
+  // Get all empty slots across all racks
+  const allSlots = [...document.querySelectorAll('#rackContainer .rack-slot')].filter(s =>
+    !s.querySelector('.rack-ch-item') && s.style.display !== 'none'
+  );
+
+  let si = 0;
+  for (const it of items) {
+    if (si >= allSlots.length) break;
+    const isActive = parseInt(it.dataset.slots) === 2;
+
+    if (isActive) {
+      // Find next A or C slot with its pair free
+      while (si < allSlots.length) {
+        const s = allSlots[si];
+        const ch = s.dataset.ch;
+        if (ch === 'A' || ch === 'C') {
+          const pairCh = ch === 'A' ? 'B' : 'D';
+          const ampDiv = s.closest('.rack-amp');
+          const sec = ampDiv ? ampDiv.querySelector('.rack-slot[data-ch="' + pairCh + '"]') : null;
+          if (sec && !sec.querySelector('.rack-ch-item') && sec.style.display !== 'none') {
+            s.textContent = '';
+            it.style.opacity = '1';
+            rackItemToSlotView(it);
+            s.appendChild(it);
+            sec.textContent = '';
+            sec.style.display = 'none';
+            sec.dataset.mergedInto = s.dataset.ch;
+            s.style.flex = '2';
+            s.style.borderStyle = 'solid';
+            s.style.borderColor = 'var(--accent)';
+            // Remove sec from allSlots
+            const secIdx = allSlots.indexOf(sec);
+            if (secIdx > si) allSlots.splice(secIdx, 1);
+            si++;
+            break;
+          }
+        }
+        si++;
+      }
+    } else {
+      const s = allSlots[si];
+      s.textContent = '';
+      it.style.opacity = '1';
+      rackItemToSlotView(it);
+      s.appendChild(it);
+      si++;
+    }
+  }
+  rackBuildPopulate();
+}
+
+function rackPullFromAmpId() {
+  if (!metricDbBytes) { alert('No .dbpr loaded.'); return; }
+
+  // Read assignments from Amp ID tab DOM
+  const chMap = {'A':'A','B':'B','C':'C','D':'D','AB':'A','CD':'C','A+B':'A','C+D':'C'};
+  const amps = new Map(); // ampIdStr → [{sgId, posIdx, cabName, sgName, ch, isActive, posNum, cabId}]
+
+  document.querySelectorAll('#ampIdGroups [data-sgid]').forEach(card => {
+    const sgId = parseInt(card.dataset.sgid);
+    const sgName = card.querySelector('p')?.textContent?.trim() || '';
+    card.querySelectorAll('tbody tr').forEach(tr => {
+      const posIdx = parseInt(tr.dataset.posidx);
+      const cabId = parseInt(tr.dataset.cabid);
+      const tds = tr.querySelectorAll('td');
+      if (tds.length < 5) return;
+      const displayNum = tds[0].textContent.trim();
+      const cabName = tds[1].textContent.trim();
+      const ampIdStr = tds[3].textContent.trim();
+      const chStr = tds[4].textContent.trim().toUpperCase();
+      if (!ampIdStr || ampIdStr === '—' || !chStr || chStr === '—') return;
+      const ch = chMap[chStr];
+      if (!ch) return;
+      const isActive = ampIdIsDualActive(cabName);
+
+      if (!amps.has(ampIdStr)) amps.set(ampIdStr, []);
+      amps.get(ampIdStr).push({ sgId, posIdx, cabId, cabName, sgName, ch, isActive, posNum: displayNum });
+    });
+  });
+
+  if (!amps.size) { alert('No amp assignments found in Amp ID tab. Assign amp IDs there first.'); return; }
+
+  // Clear existing racks
+  const container = document.getElementById('rackContainer');
+  container.innerHTML = '';
+  _rackCounter = 0;
+
+  // Figure out how many amps per rack — use default from input or group all into one rack
+  const ampsPerRack = parseInt(document.getElementById('rackAmpsPerRack').value) || 3;
+  const ampEntries = [...amps.entries()].sort((a, b) => a[0].localeCompare(b[0], undefined, {numeric: true}));
+  const numRacks = Math.ceil(ampEntries.length / ampsPerRack);
+
+  // Create racks
+  const chLabels = ['A','B','C','D'];
+  for (let r = 0; r < numRacks; r++) {
+    _rackCounter++;
+    const rack = document.createElement('div');
+    rack.className = 'rack-box';
+    rack.style.cssText = 'border:1px solid var(--border);border-radius:6px;padding:8px;width:340px;flex:0 0 340px;background:var(--panel)';
+
+    const rackAmps = ampEntries.slice(r * ampsPerRack, (r + 1) * ampsPerRack);
+    let ampsHtml = '';
+    for (let a = 0; a < rackAmps.length; a++) {
+      const [ampIdStr, cabs] = rackAmps[a];
+      let chSlots = '';
+      for (let c = 0; c < 4; c++) {
+        chSlots += '<div class="rack-slot" data-amp="' + a + '" data-ch="' + chLabels[c] + '" style="border:1px dashed var(--border);border-radius:3px;padding:4px 2px;min-height:24px;font-family:var(--mono);font-size:0.62rem;color:var(--muted);text-align:center;flex:1">' + chLabels[c] + '</div>';
+      }
+      ampsHtml += '<div class="rack-amp" data-ampslot="' + a + '" style="border:1px solid var(--border);border-radius:4px;padding:4px;margin:3px 0">' +
+        '<div style="display:flex;align-items:center;gap:4px;margin-bottom:3px">' +
+          '<span style="font-family:var(--mono);font-size:0.58rem;color:var(--dim)">ID:</span>' +
+          '<input type="text" class="rack-amp-id" value="' + ampIdStr + '" style="font-family:var(--mono);font-size:0.68rem;font-weight:bold;background:transparent;color:var(--text);border:1px solid var(--border);border-radius:3px;padding:1px 4px;width:50px;text-align:center" onblur="rackPadAmpId(this)">' +
+        '</div>' +
+        '<div style="display:flex;gap:3px">' + chSlots + '</div>' +
+      '</div>';
+    }
+
+    rack.innerHTML =
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">' +
+        '<input type="text" value="Rack ' + _rackCounter + '" style="font-family:var(--mono);font-size:0.76rem;font-weight:bold;background:transparent;color:var(--text);border:1px solid transparent;border-radius:4px;padding:2px 4px;flex:1;min-width:0" onfocus="this.style.borderColor=\'var(--border)\'" onblur="this.style.borderColor=\'transparent\'">' +
+        '<button onclick="rackDelete(this)" style="font-family:var(--mono);font-size:0.68rem;background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:2px 8px;cursor:pointer" title="Delete rack">✕</button>' +
+      '</div>' +
+      ampsHtml;
+
+    // Set up drop zones
+    rack.querySelectorAll('.rack-slot').forEach(slot => {
+      slot.addEventListener('dragover', rackDragOver);
+      slot.addEventListener('dragleave', rackDragLeave);
+      slot.addEventListener('drop', rackDrop);
+    });
+    rack.querySelectorAll('.rack-amp').forEach(amp => {
+      amp.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+      amp.addEventListener('drop', rackDrop);
+    });
+
+    container.appendChild(rack);
+
+    // Now place cabs into slots
+    for (let a = 0; a < rackAmps.length; a++) {
+      const [ampIdStr, cabs] = rackAmps[a];
+      const ampDiv = rack.querySelectorAll('.rack-amp')[a];
+      if (!ampDiv) continue;
+
+      for (const cab of cabs) {
+        const slot = ampDiv.querySelector('.rack-slot[data-ch="' + cab.ch + '"]');
+        if (!slot) continue;
+
+        const el = document.createElement('div');
+        el.className = 'rack-ch-item';
+        el.dataset.chkey = cab.sgId + ':' + cab.cabId;
+        el.dataset.cabname = cab.cabName;
+        el.dataset.sgname = cab.sgName;
+        el.dataset.sgid = cab.sgId;
+        el.dataset.posidx = cab.posIdx;
+        el.dataset.posnum = cab.posNum;
+        el.dataset.slots = cab.isActive ? 2 : 1;
+        el.draggable = true;
+        el.style.cssText = 'font-family:var(--mono);font-size:0.72rem;padding:4px 8px;margin:1px 0;background:var(--bg);border:1px solid var(--border);border-radius:3px;cursor:grab;display:flex;justify-content:space-between;align-items:center';
+        el.addEventListener('dragstart', rackDragStart);
+
+        rackItemToSlotView(el);
+        slot.textContent = '';
+        slot.appendChild(el);
+
+        // Merge paired slot for active cabs
+        if (cab.isActive) {
+          const pairCh = cab.ch === 'A' ? 'B' : 'D';
+          const sec = ampDiv.querySelector('.rack-slot[data-ch="' + pairCh + '"]');
+          if (sec) {
+            sec.textContent = '';
+            sec.style.display = 'none';
+            sec.dataset.mergedInto = cab.ch;
+            slot.style.flex = '2';
+            slot.style.borderStyle = 'solid';
+            slot.style.borderColor = 'var(--accent)';
+          }
+        }
+      }
+    }
+  }
+
+  rackBuildPopulate();
+}
+
+function rackBuildExportDbpr() {
+  if (!metricDbBytes) { alert('No .dbpr loaded — go to Import tab first.'); return; }
+
+  // Walk rack DOM and collect assignments: {sgId, posIdx, subnet, device, ampCh}
+  const chMap = {'A':1,'B':2,'C':3,'D':4};
+  const assignments = [];
+  const ampIds = new Map();
+  const ampSubsystem = new Map();
+  const ampChannelSubs = new Map();
+
+  document.querySelectorAll('#rackContainer .rack-amp').forEach(ampDiv => {
+    const idInput = ampDiv.querySelector('.rack-amp-id');
+    const ampIdStr = idInput ? idInput.value.trim() : '';
+    if (!ampIdStr) return;
+    const dot = ampIdStr.indexOf('.');
+    if (dot < 0) return;
+    const subnet = parseInt(ampIdStr.substring(0, dot));
+    const device = parseInt(ampIdStr.substring(dot + 1));
+    if (isNaN(subnet) || isNaN(device)) return;
+    const key = subnet + '.' + String(device).padStart(2, '0');
+    ampIds.set(key, { subnet, device });
+
+    ampDiv.querySelectorAll('.rack-slot').forEach(slot => {
+      const item = slot.querySelector('.rack-ch-item');
+      if (!item) return;
+      const ch = slot.dataset.ch;
+      const ampCh = chMap[ch];
+      if (!ampCh) return;
+      const sgId = parseInt(item.dataset.sgid);
+      const posIdx = parseInt(item.dataset.posidx);
+      const sgName = item.dataset.sgname || '';
+      if (isNaN(sgId) || isNaN(posIdx)) return;
+
+      if (!ampSubsystem.has(key)) ampSubsystem.set(key, sgName);
+      ampChannelSubs.set(key + '.' + ampCh, sgName);
+
+      // Active cabs occupy AB or CD — add both channels
+      const isActive = parseInt(item.dataset.slots) === 2;
+      if (isActive) {
+        const pairCh = (ch === 'A') ? 2 : (ch === 'C') ? 4 : null;
+        assignments.push({ sgId, posIdx, subnet, device, ampCh, key });
+        // Don't double-push — the B/D slot is hidden, so it won't have an item
+      } else {
+        assignments.push({ sgId, posIdx, subnet, device, ampCh, key });
+      }
+    });
+  });
+
+  if (!assignments.length) { alert('No amp ID assignments in rack build. Place cabinets into racks and set amp IDs first.'); return; }
+
+  // Check for amps with no ID set
+  let missingIds = 0;
+  document.querySelectorAll('#rackContainer .rack-amp').forEach(ampDiv => {
+    if (ampDiv.querySelector('.rack-ch-item')) {
+      const idInput = ampDiv.querySelector('.rack-amp-id');
+      if (!idInput || !idInput.value.trim()) missingIds++;
+    }
+  });
+  if (missingIds > 0) {
+    if (!confirm(missingIds + ' amp(s) with cabinets have no ID set — those cabs will be skipped. Continue?')) return;
+  }
+
+  try {
+    const db = new SQL.Database(new Uint8Array(metricDbBytes));
+
+    // Determine active speakers from DB
+    const activeSpeakers = new Set();
+    const actRes = db.exec(`SELECT DISTINCT c.SpeakerId FROM Cabinets c
+      JOIN DevicesAmplifier da ON c.DeviceId = da.DeviceId
+      WHERE c.OrderIndex = 1 AND da.OutputMode = 8 AND c.DeviceId > 0`);
+    if (actRes[0]) for (const r of actRes[0].values) activeSpeakers.add(r[0]);
+
+    // OutputMode per amp
+    const ampABActive = new Map();
+    const ampCDActive = new Map();
+    for (const a of assignments) {
+      const spkRes = db.exec('SELECT SpeakerId FROM Cabinets WHERE SourceGroupId=? AND PositionIndex=? AND OrderIndex=1', [a.sgId, a.posIdx]);
+      if (spkRes[0]) {
+        for (const r of spkRes[0].values) {
+          const isActive = activeSpeakers.has(r[0]);
+          if (a.ampCh <= 2) {
+            if (isActive) ampABActive.set(a.key, true);
+            else if (!ampABActive.has(a.key)) ampABActive.set(a.key, false);
+          } else {
+            if (isActive) ampCDActive.set(a.key, true);
+            else if (!ampCDActive.has(a.key)) ampCDActive.set(a.key, false);
+          }
+        }
+      }
+    }
+    const ampOutputMode = new Map();
+    for (const key of ampIds.keys()) {
+      const ab = ampABActive.get(key) || false;
+      const cd = ampCDActive.get(key) || false;
+      ampOutputMode.set(key, (ab && cd) ? 8 : ab ? 2 : cd ? 4 : 0);
+    }
+
+    // Capture InputMode from existing devices
+    const ampInputMode = new Map();
+    for (const a of assignments) {
+      if (ampInputMode.has(a.key)) continue;
+      const imRes = db.exec(`SELECT da.InputMode FROM Cabinets c
+        JOIN DevicesAmplifier da ON c.DeviceId = da.DeviceId
+        WHERE c.SourceGroupId=? AND c.PositionIndex=? AND c.DeviceId > 0 LIMIT 1`, [a.sgId, a.posIdx]);
+      if (imRes[0] && imRes[0].values[0]) ampInputMode.set(a.key, imRes[0].values[0][0]);
+    }
+
+    // Collect all CabinetIds being reassigned
+    const reassignedCabIds = new Set();
+    for (const a of assignments) {
+      const cabRows = db.exec('SELECT CabinetId FROM Cabinets WHERE SourceGroupId=? AND PositionIndex=?', [a.sgId, a.posIdx]);
+      if (cabRows[0]) for (const r of cabRows[0].values) reassignedCabIds.add(r[0]);
+    }
+
+    // Find DeviceIds still referenced by untouched cabs
+    const usedDeviceIds = new Set();
+    const allCabs = db.exec('SELECT CabinetId, DeviceId FROM Cabinets WHERE DeviceId > 0');
+    if (allCabs[0]) {
+      for (const r of allCabs[0].values) {
+        if (!reassignedCabIds.has(r[0])) usedDeviceIds.add(r[1]);
+      }
+    }
+
+    // Delete orphaned amp Device rows (only D80s — preserve ArraySight and other non-amp devices)
+    const allDevs = db.exec("SELECT DeviceId FROM Devices WHERE Model='D80'");
+    if (allDevs[0]) {
+      for (const r of allDevs[0].values) {
+        if (!usedDeviceIds.has(r[0])) {
+          db.run('DELETE FROM Devices WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM DevicesAmplifier WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM AmplifierChannels WHERE DeviceId=?', [r[0]]);
+        }
+      }
+    }
+
+    // Create new Device rows
+    const maxIdRes = db.exec('SELECT MAX(DeviceId) FROM Devices');
+    let nextDeviceId = (maxIdRes[0] && maxIdRes[0].values[0][0]) ? maxIdRes[0].values[0][0] + 1 : 1;
+
+    const deviceIdMap = new Map();
+    for (const [key, info] of ampIds) {
+      const subsys = ampSubsystem.get(key) || '';
+      const devName = subsys ? subsys + ' ' + key : key;
+      db.run('INSERT INTO Devices (DeviceId, Model, RemoteIdSubnet, RemoteIdDevice, Name) VALUES (?,?,?,?,?)',
+        [nextDeviceId, 'D80', info.subnet, info.device, devName]);
+      const inMode = ampInputMode.get(key) ?? 4;
+      const outMode = ampOutputMode.get(key) ?? 0;
+      db.run('INSERT INTO DevicesAmplifier (DeviceId, InputMode, OutputMode) VALUES (?,?,?)',
+        [nextDeviceId, inMode, outMode]);
+      for (let ch = 1; ch <= 4; ch++) {
+        const chSub = ampChannelSubs.get(key + '.' + ch) || subsys || '';
+        const chName = chSub ? chSub + ' ' : '';
+        db.run('INSERT INTO AmplifierChannels (DeviceId, AmplifierChannel, Name) VALUES (?,?,?)',
+          [nextDeviceId, ch, chName]);
+      }
+      deviceIdMap.set(key, nextDeviceId);
+      nextDeviceId++;
+    }
+
+    // Update Cabinets + Groups table
+    const groupUpdates = [];
+    for (const a of assignments) {
+      const newDevId = deviceIdMap.get(a.key);
+      if (newDevId == null) continue;
+      const oldRows = db.exec('SELECT DeviceId, AmplifierChannel FROM Cabinets WHERE SourceGroupId=? AND PositionIndex=? LIMIT 1', [a.sgId, a.posIdx]);
+      if (oldRows[0] && oldRows[0].values[0]) {
+        const [oldDev, oldCh] = oldRows[0].values[0];
+        if (oldDev > 0) groupUpdates.push({ oldDev, oldCh, newDev: newDevId, newCh: a.ampCh });
+      }
+      db.run('UPDATE Cabinets SET DeviceId=?, AmplifierChannel=? WHERE SourceGroupId=? AND PositionIndex=?',
+        [newDevId, a.ampCh, a.sgId, a.posIdx]);
+    }
+
+    const hasGroups = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='Groups'");
+    if (hasGroups[0]) {
+      for (const g of groupUpdates) {
+        db.run('UPDATE Groups SET TargetId=?, TargetChannel=? WHERE TargetId=? AND TargetChannel=?',
+          [g.newDev, g.newCh, g.oldDev, g.oldCh]);
+      }
+    }
+
+    // Restore original SG names
+    for (const [sgId, origName] of Object.entries(_origSgNames)) {
+      db.run('UPDATE SourceGroups SET Name=? WHERE SourceGroupId=?', [origName, parseInt(sgId)]);
+    }
+
+    const data = db.export();
+    db.close();
+    const blob = new Blob([data], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const base = origFileName.replace(/\.[^.]+$/, '');
+    a.download = base + '_rackbuild.dbpr';
+    a.click();
+    URL.revokeObjectURL(url);
+
+  } catch(e) { console.error('rackBuildExportDbpr:', e); alert('Error: ' + e.message); }
+}
+
+function rackItemToSlotView(item) {
+  // Strip checkbox + arrow, add × remove button — compact: subsystem + #pos
+  const posNum = item.dataset.posnum || '';
+  const sgName = item.dataset.sgname || '';
+  const cabName = item.dataset.cabname || '';
+  const isActive = parseInt(item.dataset.slots) === 2;
+  // Short label: subsystem abbreviation + position number
+  const shortLabel = sgName || cabName;
+  item.innerHTML = '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:0.58rem" title="' + cabName + ' — ' + sgName + ' #' + posNum + '"><span style="font-weight:bold">' + shortLabel + '</span> <span style="color:var(--dim)">#' + posNum + '</span></span>' +
+    '<button onclick="rackRemoveFromSlot(this.closest(\'.rack-ch-item\'))" style="font-family:var(--mono);font-size:0.62rem;background:none;border:none;color:var(--muted);cursor:pointer;padding:0 2px;line-height:1" title="Remove">✕</button>';
+  item.style.cursor = 'grab';
+}
+
+function rackItemToListView(item) {
+  // Restore checkbox + arrow for unassigned list
+  const posNum = item.dataset.posnum || '';
+  const cabName = item.dataset.cabname || '';
+  const isActive = parseInt(item.dataset.slots) === 2;
+  const modeTag = isActive ? '<span style="color:var(--accent);font-size:0.6rem;margin-left:4px">2ch</span>' : '';
+  item.innerHTML = '<label style="display:flex;align-items:center;gap:4px;cursor:grab;flex:1;min-width:0"><input type="checkbox" class="rack-sel-cb" style="margin:0;cursor:pointer"><span style="color:var(--dim);font-size:0.62rem">#' + posNum + '</span><span style="font-weight:bold">' + cabName + '</span>' + modeTag + '</label>' +
+    '<button class="rack-assign-btn" onclick="rackAssignNext(this.closest(\'.rack-ch-item\'))" style="font-family:var(--mono);font-size:0.72rem;background:none;border:1px solid var(--border);color:var(--muted);border-radius:3px;padding:0 5px;cursor:pointer;line-height:1.4" title="Assign to next available slot">→</button>';
+}
+
+function rackRemoveFromSlot(item) {
+  rackRestoreOldSlots(item);
+  item.remove();
+  rackBuildPopulate();
+}
+
+function rackPadAmpId(input) {
+  const val = input.value.trim();
+  if (!val) return;
+  const dot = val.indexOf('.');
+  if (dot < 0) return;
+  const subnet = parseInt(val.substring(0, dot));
+  const device = parseInt(val.substring(dot + 1));
+  if (isNaN(subnet) || isNaN(device)) return;
+  input.value = subnet + '.' + String(device).padStart(2, '0');
+}
+
+// Hook into showPage to populate rack build when opened
+const _origShowPage = showPage;
+showPage = function(id) {
+  _origShowPage(id);
+  if (id === 'rackbuild') rackBuildPopulate();
+};
+
+// Also allow dropping back to unassigned list
+document.addEventListener('DOMContentLoaded', () => {
+  const list = document.getElementById('rackAmpList');
+  if (list) {
+    list.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+    list.addEventListener('drop', e => {
+      e.preventDefault();
+      if (!_rackDragItem) return;
+      rackRestoreOldSlots(_rackDragItem);
+      _rackDragItem.style.opacity = '1';
+      _rackDragItem.remove();
+      _rackDragItem = null;
+      rackBuildPopulate();
+    });
+  }
+});
 
 function buildReportHTML() {
   const advPinning = getAdvancedPinning();
@@ -2664,6 +4284,7 @@ function processFile(file) {
       populateSpacingFromProject();
       populateSubSpacingFromProject();
       populateRigging();
+      populateAmpIdFromProject();
       const _rb2 = document.getElementById('loadDbprBtn'); if(_rb2){_rb2.disabled=false;_rb2.style.opacity='1';}
 
     } catch (err) {
