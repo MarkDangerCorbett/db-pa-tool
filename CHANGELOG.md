@@ -4,6 +4,13 @@ Versioning: `major.minor.patch` (e.g. 0.98.01). Patch = small point updates.
 
 ---
 
+## 1.1.2 BETA
+- **Amp ID fix:** Amp IDs now parsed from device Name field (e.g. "Mains 4.07" → 4.07) instead of RemoteIdSubnet/RemoteIdDevice. Fixes incorrect starting amp IDs on files where R1 network addresses differ from user-assigned amp IDs.
+- **EDS subsystem dropdown:** Auto-assign now has a subsystem selector (Main, Flown Sub, Side, Side Flown Sub, 270, Subs, Fill, Centre per side; Delays 1-8; 360 1-8) that auto-fills the start ID per EDS amp ID standard.
+- **D20 support:** D20 amps now treated same as D80 for InputMode/OutputMode.
+- **Rack build: patch plan export.** Rack tab export now writes Racks, RackConfigurations, and PatchIOChannels tables into the .dbpr so racks appear in R1's patch plan view.
+- Device cleanup expanded to cover all amp models (D80, D20, D90, D40, D25, U7N).
+
 ## 1.1.1 BETA
 - **New tab: Amp IDs.** Assign amplifier IDs (subnet.device) and channels to cabinets per source group. Supports 2-way active (AB/CD channel pairs) and passive (individual channel) modes. Auto-assign with configurable start ID and direction. Stereo pairs labelled (L)/(R). Export writes assignments back into .dbpr — creates Device/DevicesAmplifier/AmplifierChannels rows, sets OutputMode per amp, preserves ArraySight devices and non-amp data.
 - **New tab: Rack Build (BETA).** Visual rack layout for amp channel assignment. Build racks with configurable amps-per-rack. Drag cabinets into channel slots — active cabs snap to AB/CD pairs, passive cabs take individual channels. Multi-select with checkboxes, auto-assign with arrow button. "Pull from Amp ID" imports existing assignments into rack view. Exports modified .dbpr same as Amp IDs.
