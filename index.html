@@ -3357,15 +3357,17 @@ function ampIdExportDbpr() {
     if (allDevs[0]) {
       for (const r of allDevs[0].values) {
         if (!keptDeviceIds.has(r[0]) && !usedDeviceIds.has(r[0])) {
-          // Clean up ALL tables referencing this DeviceId before deleting
-          db.run('DELETE FROM PatchIOChannels WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM ChannelGroups WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM SnapshotValues WHERE TargetId=?', [r[0]]);
-          db.run('DELETE FROM Controls WHERE TargetId=?', [r[0]]);
-          db.run('DELETE FROM Groups WHERE TargetId=?', [r[0]]);
-          db.run('DELETE FROM AmplifierChannels WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM DevicesAmplifier WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM Devices WHERE DeviceId=?', [r[0]]);
+          // Clean up tables referencing this DeviceId before deleting
+          // Some tables (Controls, SnapshotValues, PatchIOChannels) may not exist in all ArrayCalc versions
+          const delTables = [
+            ['PatchIOChannels', 'DeviceId'], ['ChannelGroups', 'DeviceId'],
+            ['SnapshotValues', 'TargetId'], ['Controls', 'TargetId'],
+            ['Groups', 'TargetId'], ['AmplifierChannels', 'DeviceId'],
+            ['DevicesAmplifier', 'DeviceId'], ['Devices', 'DeviceId']
+          ];
+          for (const [tbl, col] of delTables) {
+            try { db.run('DELETE FROM ' + tbl + ' WHERE ' + col + '=?', [r[0]]); } catch(e) {}
+          }
         }
       }
     }
@@ -4185,19 +4187,20 @@ function rackBuildExportDbpr() {
       }
     }
 
-    // Delete orphaned amp devices and clean up ALL referencing tables
+    // Delete orphaned amp devices and clean up referencing tables
     const allDevs = db.exec("SELECT DeviceId FROM Devices WHERE Model IN ('D80','D20','D90','D40','D25','U7N')");
     if (allDevs[0]) {
+      const delTables2 = [
+        ['PatchIOChannels', 'DeviceId'], ['ChannelGroups', 'DeviceId'],
+        ['SnapshotValues', 'TargetId'], ['Controls', 'TargetId'],
+        ['Groups', 'TargetId'], ['AmplifierChannels', 'DeviceId'],
+        ['DevicesAmplifier', 'DeviceId'], ['Devices', 'DeviceId']
+      ];
       for (const r of allDevs[0].values) {
         if (!keptDeviceIds.has(r[0]) && !usedDeviceIds.has(r[0])) {
-          db.run('DELETE FROM PatchIOChannels WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM ChannelGroups WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM SnapshotValues WHERE TargetId=?', [r[0]]);
-          db.run('DELETE FROM Controls WHERE TargetId=?', [r[0]]);
-          db.run('DELETE FROM Groups WHERE TargetId=?', [r[0]]);
-          db.run('DELETE FROM AmplifierChannels WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM DevicesAmplifier WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM Devices WHERE DeviceId=?', [r[0]]);
+          for (const [tbl, col] of delTables2) {
+            try { db.run('DELETE FROM ' + tbl + ' WHERE ' + col + '=?', [r[0]]); } catch(e) {}
+          }
         }
       }
     }
@@ -4555,20 +4558,21 @@ function unifiedExportDbpr() {
       }
     }
 
-    // Delete orphaned amp devices and clean up ALL referencing tables
+    // Delete orphaned amp devices and clean up referencing tables
     const oldDevRes = db.exec("SELECT DeviceId FROM Devices WHERE Model IN ('D80','D20','D90','D40','D25','U7N')");
     if (oldDevRes[0]) {
+      const delTables3 = [
+        ['PatchIOChannels', 'DeviceId'], ['ChannelGroups', 'DeviceId'],
+        ['SnapshotValues', 'TargetId'], ['Controls', 'TargetId'],
+        ['Groups', 'TargetId'], ['AmplifierChannels', 'DeviceId'],
+        ['DevicesAmplifier', 'DeviceId'], ['Devices', 'DeviceId']
+      ];
       for (const r of oldDevRes[0].values) {
         if (arraySightIds.has(r[0])) continue;
         if (!keptDeviceIds.has(r[0]) && !usedDeviceIds.has(r[0])) {
-          db.run('DELETE FROM PatchIOChannels WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM ChannelGroups WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM SnapshotValues WHERE TargetId=?', [r[0]]);
-          db.run('DELETE FROM Controls WHERE TargetId=?', [r[0]]);
-          db.run('DELETE FROM Groups WHERE TargetId=?', [r[0]]);
-          db.run('DELETE FROM AmplifierChannels WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM DevicesAmplifier WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM Devices WHERE DeviceId=?', [r[0]]);
+          for (const [tbl, col] of delTables3) {
+            try { db.run('DELETE FROM ' + tbl + ' WHERE ' + col + '=?', [r[0]]); } catch(e) {}
+          }
         }
       }
     }
