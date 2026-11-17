@@ -4,6 +4,15 @@ Versioning: `major.minor.patch` (e.g. 0.98.01). Patch = small point updates.
 
 ---
 
+## 1.1.4 BETA
+- **Channel naming for R1 + AutoR1 compatibility.** Amp ID export now generates channel names that work in both d&b R1 and AutoR1 (v3.autor1.app). Updates both AmplifierChannels and Groups tables so both apps see consistent names.
+- **R1 15-character limit enforced.** All generated channel names are ≤ 15 characters — R1 silently truncates longer names, creating duplicates that break routing.
+- **Sub array naming:** hardcoded `SUBarray` base (no space) → `SUBarray Lxx-xx`, `SUBarray Rxx-xx`, `SUBarray Cxx`.
+- **Cross-device duplicate detection:** warning and fix now catch channel names that appear on more than one amp (not just count > 2 on a single device).
+- **Passive/point source unique naming:** amps where all 4 channels drive speakers get unique per-channel names (no Ch1→Ch2 copy).
+- **Unused channel naming:** channels in "Unused channels" SG (Type=5) named `"unused"`, excluded from duplicate checks.
+- **Final cleanup pass:** cross-device duplicates resolved with sequential renaming, base truncated to 12 chars to leave room for suffix within 15-char limit.
+
 ## 1.1.2 BETA
 - **Amp ID fix:** Amp IDs now parsed from device Name field (e.g. "Mains 4.07" → 4.07) instead of RemoteIdSubnet/RemoteIdDevice. Fixes incorrect starting amp IDs on files where R1 network addresses differ from user-assigned amp IDs.
 - **EDS subsystem dropdown:** Auto-assign now has a subsystem selector (Main, Flown Sub, Side, Side Flown Sub, 270, Subs, Fill, Centre per side; Delays 1-8; 360 1-8) that auto-fills the start ID per EDS amp ID standard.

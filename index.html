@@ -17,7 +17,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>d&b PA Tech Tool v1.1.2 BETA</title>
+<title>d&b PA Tech Tool v1.1.4 BETA</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -608,7 +608,7 @@ svg { width: 100%; display: block; }
 
 <nav class="nav">
   <div class="nav-top-row">
-    <div class="nav-brand">d&amp;b PA Tech Tool <span style="font-size:0.7em;opacity:0.6">v1.1.2 BETA</span></div>
+    <div class="nav-brand">d&amp;b PA Tech Tool <span style="font-size:0.7em;opacity:0.6">v1.1.4 BETA</span></div>
     <button id="themeToggle" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:0.72rem;padding:4px 10px;border-radius:4px;cursor:pointer;letter-spacing:0.05em;white-space:nowrap">Light</button>
   </div>
   <div class="nav-tabs">
@@ -1208,6 +1208,7 @@ svg { width: 100%; display: block; }
 
   <div id="ampIdContent" style="display:none">
     <div id="ampIdGroups"></div>
+    <div id="ampIdWarnings" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(255,100,0,0.12);border:1px solid rgba(255,100,0,0.35);border-radius:6px;font-family:var(--mono);font-size:0.72rem;color:var(--text);line-height:1.6"></div>
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
       <button onclick="ampIdExportDbpr()" style="font-family:var(--mono);font-size:0.78rem;background:var(--accent);color:#000;border:none;border-radius:4px;padding:8px 18px;cursor:pointer;font-weight:bold">Export .dbpr</button>
       <span style="font-family:var(--mono);font-size:0.68rem;color:var(--muted);margin-left:10px">Writes current amp IDs back into the project file and downloads it</span>
@@ -1724,6 +1725,8 @@ function showPage(id) {
 
   const tab = document.getElementById('tab-' + id);
   if (tab) tab.classList.add('active');
+
+  if (id === 'ampid' && metricDbBytes) setTimeout(ampIdCheckWarnings, 50);
 }
 
 function clearProject() {
@@ -2454,6 +2457,7 @@ function populateAmpIdFromProject() {
       container.innerHTML += cardHtml;
     }
     db.close();
+    setTimeout(ampIdCheckWarnings, 100);
   } catch(e) { console.error('populateAmpIdFromProject:', e); }
 }
 
@@ -2578,6 +2582,319 @@ function ampIdSubsysChanged(sel) {
   if (!card) return;
   const startInput = card.querySelector('.ampid-start');
   if (startInput) startInput.value = val;
+  setTimeout(ampIdCheckWarnings, 50);
+}
+
+function ampIdCheckWarnings() {
+  const wDiv = document.getElementById('ampIdWarnings');
+  if (!wDiv) return;
+  if (!metricDbBytes) { wDiv.style.display = 'none'; return; }
+  const warnings = [];
+  // badGroups: subsystem groups where all channels share the same name (no numbering)
+  const badGroups = []; // [{name, count}]
+
+  try {
+    const db = new SQL.Database(new Uint8Array(metricDbBytes));
+
+    // Find subsystems where channel names are not unique across the group
+    // Group by the channel name base (strip trailing whitespace) and count how many
+    // channels share it vs total channels in that device-name prefix
+    // Catch both: >2 total count OR same name on different devices (cross-device dups)
+    // Exclude "unused" — deliberate placeholder for spare channels
+    const rows = db.exec(`
+      SELECT TRIM(ach.Name) as chName, COUNT(*) as cnt,
+             COUNT(DISTINCT ach.DeviceId) as devCnt
+      FROM Devices d
+      JOIN AmplifierChannels ach ON d.DeviceId = ach.DeviceId
+      WHERE d.Model IN ('D80','D20','D90','D40','D25','U7N')
+        AND ach.Name IS NOT NULL AND TRIM(ach.Name) != ''
+        AND LOWER(TRIM(ach.Name)) != 'unused'
+      GROUP BY TRIM(ach.Name)
+      HAVING COUNT(*) > 2 OR COUNT(DISTINCT ach.DeviceId) > 1
+      ORDER BY COUNT(*) DESC
+    `);
+
+    if (rows[0]) {
+      for (const r of rows[0].values) {
+        badGroups.push({ name: r[0], count: r[1] });
+      }
+    }
+
+    db.close();
+  } catch(e) { console.error('ampIdCheckWarnings:', e); }
+
+  if (badGroups.length > 0) {
+    const names = badGroups.map(g => '<strong>' + g.name + '</strong> (' + g.count + ' channels)').join(', ');
+    warnings.push('⚠ These subsystems have identical channel names across multiple amps — auto R1 cannot distinguish them: ' + names + '. ' +
+      '<a href="#" onclick="ampIdFixChannelNames();return false" style="color:var(--accent);text-decoration:underline">Fix channel names</a>');
+  }
+
+  if (warnings.length) {
+    wDiv.innerHTML = '<strong style="color:rgb(255,160,60)">⚡ Auto R1 Compatibility</strong><br>' + warnings.join('<br>');
+    wDiv.style.display = 'block';
+  } else {
+    wDiv.style.display = 'none';
+  }
+}
+
+function ampIdFixChannelNames() {
+  if (!metricDbBytes) return;
+  try {
+    const db = new SQL.Database(new Uint8Array(metricDbBytes));
+
+    // First find which channel names are duplicated across >4 amp channels
+    const dupRes = db.exec(`
+      SELECT TRIM(ach.Name) as chName
+      FROM Devices d
+      JOIN AmplifierChannels ach ON d.DeviceId = ach.DeviceId
+      WHERE d.Model IN ('D80','D20','D90','D40','D25','U7N')
+        AND ach.Name IS NOT NULL AND TRIM(ach.Name) != ''
+      GROUP BY TRIM(ach.Name) HAVING COUNT(*) > 2
+    `);
+    if (!dupRes[0]) { db.close(); alert('No duplicate channel names found.'); return; }
+    // Note: "unused" is excluded from final cleanup, not from initial detection,
+    // because the initial detection finds names to FIX (pre-existing dups like "SUB array" x32)
+    const dupNames = new Set(dupRes[0].values.map(r => r[0]));
+
+    // Get all source groups (Type 1=line array, 2=point source, 3=sub array)
+    const sgRes = db.exec(`
+      SELECT sg.SourceGroupId, sg.Name, sg.Type, sg.OrderIndex, sg.NextSourceGroupId
+      FROM SourceGroups sg WHERE sg.Type IN (1,2,3) ORDER BY sg.Type, sg.OrderIndex
+    `);
+    if (!sgRes[0]) { db.close(); return; }
+
+    // Build set of paired SG IDs (the R-side symmetric copy, OrderIndex=-1)
+    const pairedIds = new Set();
+    for (const row of sgRes[0].values) {
+      if (row[4] > 0) pairedIds.add(row[4]); // NextSourceGroupId targets
+    }
+
+    let fixed = 0;
+
+    for (const sgRow of sgRes[0].values) {
+      const [sgId, sgName, sgType, orderIdx, nextSgId] = sgRow;
+      const baseName = (_origSgNames[sgId] || sgName).trim();
+
+      // Get cabinets with amp channel info
+      const cabRes = db.exec(`
+        SELECT c.CabinetId, c.PositionIndex, c.OrderIndex, c.OriginY,
+               c.DeviceId, c.AmplifierChannel, c.Linked, TRIM(ach.Name) as ChName
+        FROM Cabinets c
+        JOIN CabinetsAdditionalData ca ON c.CabinetId = ca.CabinetId
+        LEFT JOIN Devices d ON c.DeviceId = d.DeviceId
+        LEFT JOIN AmplifierChannels ach ON d.DeviceId = ach.DeviceId
+          AND c.AmplifierChannel = ach.AmplifierChannel
+        WHERE c.SourceGroupId = ?
+        ORDER BY c.PositionIndex, c.OrderIndex
+      `, [sgId]);
+
+      if (!cabRes[0]) continue;
+      const cabs = cabRes[0].values;
+
+      // Check if any channels in this SG have duplicate names
+      const hasDups = cabs.some(r => r[7] && dupNames.has(r[7]));
+      if (!hasDups) continue;
+
+      if (sgType === 3) {
+        // === SUB ARRAYS: "SUBarray Lxx-xx" / "SUBarray Rxx-xx" / "SUBarray Cxx" ===
+        // Hardcoded "SUBarray" base — fits R1's 15-char channel name limit
+        const subBase = 'SUBarray';
+        const posYMap = {};
+        for (const r of cabs) {
+          if (posYMap[r[1]] === undefined) posYMap[r[1]] = r[3];
+        }
+        // Sort by Y ascending: negative Y = Left, positive Y = Right (FOH perspective)
+        const positions = Object.keys(posYMap).map(Number);
+        positions.sort((a, b) => (posYMap[a] || 0) - (posYMap[b] || 0));
+        const n = positions.length;
+        const isOdd = n % 2 === 1;
+        const mid = Math.floor(n / 2);
+        const posLabels = {};
+        for (let i = 0; i < mid; i++) {
+          posLabels[positions[i]] = 'L' + String(mid - i).padStart(2, '0');
+        }
+        if (isOdd) posLabels[positions[mid]] = 'C';
+        const rStart = mid + (isOdd ? 1 : 0);
+        for (let i = rStart; i < n; i++) {
+          posLabels[positions[i]] = 'R' + String(i - rStart + 1).padStart(2, '0');
+        }
+
+        for (const r of cabs) {
+          const [cabId, posIdx, cabOrd, originY, devId, ampCh, linked, chName] = r;
+          if (linked > 0 || !devId || ampCh == null) continue;
+          if (!chName || !dupNames.has(chName)) continue;
+          const posLabel = posLabels[posIdx];
+          if (!posLabel) continue;
+          const sep = (posLabel === 'C') ? '' : '-';
+          const newName = subBase + ' ' + posLabel + sep + String(cabOrd).padStart(2, '0');
+          db.run('UPDATE AmplifierChannels SET Name=? WHERE DeviceId=? AND AmplifierChannel=?',
+            [newName, devId, ampCh]);
+          db.run('UPDATE Groups SET Name=? WHERE TargetId=? AND TargetChannel=? AND Type=1',
+            [newName, devId, ampCh]);
+          fixed++;
+        }
+
+      } else {
+        // === LINE ARRAYS (1) & POINT SOURCES (2): sequential numbering ===
+        // Paired L/R groups: "<SG Name> <num><L/R>" e.g. "Sides 01L"
+        // Unpaired: "<SG Name> <num>" e.g. "FrontFill 01"
+        // R1 enforces 15-char max on channel names — truncate baseName to fit
+        const isRight = pairedIds.has(sgId);
+        const isPaired = isRight || (nextSgId > 0);
+        const side = isPaired ? (isRight ? 'R' : 'L') : '';
+        const suffixLen = 1 + 2 + side.length; // " xx" or " xxL"
+        const maxBase = 15 - suffixLen;
+        const truncBase = baseName.length > maxBase ? baseName.substring(0, maxBase).trim() : baseName;
+
+        let seq = 0;
+        for (const r of cabs) {
+          const [cabId, posIdx, cabOrd, originY, devId, ampCh, linked, chName] = r;
+          if (linked > 0 || !devId || ampCh == null) continue;
+          if (!chName || !dupNames.has(chName)) continue;
+          seq++;
+          const newName = truncBase + ' ' + String(seq).padStart(2, '0') + side;
+          db.run('UPDATE AmplifierChannels SET Name=? WHERE DeviceId=? AND AmplifierChannel=?',
+            [newName, devId, ampCh]);
+          db.run('UPDATE Groups SET Name=? WHERE TargetId=? AND TargetChannel=? AND Type=1',
+            [newName, devId, ampCh]);
+          fixed++;
+        }
+      }
+    }
+
+    // Fix unused channels on DUAL-CHANNEL amps only (line arrays, subs).
+    // D80 dual-channel: Ch1(A)+Ch3(C) drive speakers, Ch2(B)+Ch4(D) are unused.
+    // Ch2 must copy Ch1's name, Ch4 must copy Ch3's name.
+    // SKIP amps where Ch2/Ch4 have their own cabinet (passive/point source = 4-channel mode).
+    {
+      // Build set of (DeviceId, AmplifierChannel) that have cabinet assignments
+      const cabAssign = new Set();
+      const cabRows = db.exec(`
+        SELECT DeviceId, AmplifierChannel FROM Cabinets
+        WHERE DeviceId IS NOT NULL AND AmplifierChannel IS NOT NULL
+      `);
+      if (cabRows[0]) {
+        for (const r of cabRows[0].values) cabAssign.add(r[0] + '.' + r[1]);
+      }
+
+      const allCh = db.exec(`
+        SELECT ach.DeviceId, ach.AmplifierChannel, ach.Name
+        FROM AmplifierChannels ach
+        JOIN Devices d ON ach.DeviceId = d.DeviceId
+        WHERE d.Model IN ('D80','D20','D90','D40','D25','U7N')
+        ORDER BY ach.DeviceId, ach.AmplifierChannel
+      `);
+      if (allCh[0]) {
+        const devChNames = {};
+        for (const r of allCh[0].values) {
+          const [devId, ch, name] = r;
+          if (!devChNames[devId]) devChNames[devId] = {};
+          devChNames[devId][ch] = (name || '').trim();
+        }
+        for (const devId of Object.keys(devChNames)) {
+          const chs = devChNames[devId];
+          // Only copy if Ch2/Ch4 has NO cabinet (dual-channel mode)
+          if (chs[1] && chs[2] !== chs[1] && !cabAssign.has(devId + '.2')) {
+            db.run('UPDATE AmplifierChannels SET Name=? WHERE DeviceId=? AND AmplifierChannel=?',
+              [chs[1], devId, 2]);
+            db.run('UPDATE Groups SET Name=? WHERE TargetId=? AND TargetChannel=? AND Type=1',
+              [chs[1], devId, 2]);
+            fixed++;
+          }
+          if (chs[3] && chs[4] !== chs[3] && !cabAssign.has(devId + '.4')) {
+            db.run('UPDATE AmplifierChannels SET Name=? WHERE DeviceId=? AND AmplifierChannel=?',
+              [chs[3], devId, 4]);
+            db.run('UPDATE Groups SET Name=? WHERE TargetId=? AND TargetChannel=? AND Type=1',
+              [chs[3], devId, 4]);
+            fixed++;
+          }
+        }
+      }
+    }
+
+    // Name channels in "Unused channels" SG (Type=5) as "unused"
+    {
+      const unusedChs = db.exec(`
+        SELECT DISTINCT c.DeviceId, c.AmplifierChannel
+        FROM Cabinets c
+        JOIN SourceGroups sg ON c.SourceGroupId = sg.SourceGroupId
+        JOIN Devices d ON c.DeviceId = d.DeviceId
+        WHERE sg.Type = 5 AND d.Model IN ('D80','D20','D90','D40','D25','U7N')
+          AND c.DeviceId IS NOT NULL AND c.AmplifierChannel IS NOT NULL
+      `);
+      if (unusedChs[0]) {
+        for (const [devId, ch] of unusedChs[0].values) {
+          db.run('UPDATE AmplifierChannels SET Name=? WHERE DeviceId=? AND AmplifierChannel=?',
+            ['unused', devId, ch]);
+          db.run('UPDATE Groups SET Name=? WHERE TargetId=? AND TargetChannel=? AND Type=1',
+            ['unused', devId, ch]);
+          fixed++;
+        }
+      }
+    }
+
+    // Final cleanup: any channel name appearing on MORE THAN ONE device gets renamed.
+    // x2 on the SAME device is normal (dual-channel pair Ch1=Ch2 or Ch3=Ch4).
+    // x2 on DIFFERENT devices is a cross-device duplicate that breaks R1/AutoR1.
+    // This also catches channels in "Unused channels" SG (Type=5) not processed above.
+    {
+      const remDups = db.exec(`
+        SELECT TRIM(ach.Name) as chName, COUNT(*) as cnt
+        FROM Devices d
+        JOIN AmplifierChannels ach ON d.DeviceId = ach.DeviceId
+        WHERE d.Model IN ('D80','D20','D90','D40','D25','U7N')
+          AND ach.Name IS NOT NULL AND TRIM(ach.Name) != ''
+          AND LOWER(TRIM(ach.Name)) != 'unused'
+        GROUP BY TRIM(ach.Name) HAVING COUNT(DISTINCT ach.DeviceId) > 1
+      `);
+      if (remDups[0]) {
+        for (const [dupName] of remDups[0].values) {
+          // Truncate base to fit 15-char R1 limit FIRST, then search for existing seqs
+          const cleanupBase = dupName.length > 12 ? dupName.substring(0, 12).trim() : dupName;
+          let nextSeq = 1;
+          // Search using truncated base (per-SG fix may have already used it)
+          const existingSeqs = db.exec(`
+            SELECT TRIM(ach.Name) FROM AmplifierChannels ach
+            JOIN Devices d ON d.DeviceId = ach.DeviceId
+            WHERE d.Model IN ('D80','D20','D90','D40','D25','U7N')
+              AND TRIM(ach.Name) LIKE ? || ' %'
+          `, [cleanupBase]);
+          if (existingSeqs[0]) {
+            for (const [eName] of existingSeqs[0].values) {
+              const m = eName.match(/\s(\d+)\s*[LRC]?\s*$/);
+              if (m) nextSeq = Math.max(nextSeq, parseInt(m[1]) + 1);
+            }
+          }
+          // Rename ALL instances of the duplicated name
+          const chRows = db.exec(`
+            SELECT ach.DeviceId, ach.AmplifierChannel
+            FROM AmplifierChannels ach
+            JOIN Devices d ON d.DeviceId = ach.DeviceId
+            WHERE d.Model IN ('D80','D20','D90','D40','D25','U7N')
+              AND TRIM(ach.Name) = ?
+            ORDER BY ach.DeviceId, ach.AmplifierChannel
+          `, [dupName]);
+          if (!chRows[0]) continue;
+          for (const [devId, ch] of chRows[0].values) {
+            const newName = cleanupBase + ' ' + String(nextSeq).padStart(2, '0');
+            nextSeq++;
+            db.run('UPDATE AmplifierChannels SET Name=? WHERE DeviceId=? AND AmplifierChannel=?',
+              [newName, devId, ch]);
+            db.run('UPDATE Groups SET Name=? WHERE TargetId=? AND TargetChannel=? AND Type=1',
+              [newName, devId, ch]);
+            fixed++;
+          }
+        }
+      }
+    }
+
+    const data = db.export();
+    metricDbBytes = data.buffer;
+    db.close();
+
+    alert('Fixed ' + fixed + ' channel name(s). Re-export to save.');
+    ampIdCheckWarnings();
+  } catch(e) { console.error('ampIdFixChannelNames:', e); alert('Error: ' + e.message); }
 }
 
 function ampIdMarkEdited(td) {
@@ -2845,12 +3162,18 @@ function ampIdAssignGroup(btn) {
     }
     // tally removed — rack build tab handles this now
     ampIdCheckDuplicates();
+    ampIdCheckWarnings();
 
   } catch(e) { console.error('ampIdAssignGroup:', e); alert('Error: ' + e.message); }
 }
 
 function ampIdExportDbpr() {
   if (!metricDbBytes) { alert('No .dbpr loaded — go to Import tab first.'); return; }
+  ampIdCheckWarnings();
+  const wDiv = document.getElementById('ampIdWarnings');
+  if (wDiv && wDiv.style.display !== 'none') {
+    if (!confirm('There are auto R1 compatibility warnings.\n\nExport anyway?')) return;
+  }
   try {
     const db = new SQL.Database(new Uint8Array(metricDbBytes));
 
@@ -2861,7 +3184,7 @@ function ampIdExportDbpr() {
     const assignments = []; // {sgId, posIdx, subnet, device, ampCh, key}
     const ampIds = new Map(); // "subnet.device" → {subnet, device}
     const ampSubsystem = new Map(); // "subnet.device" → subsystem name (from first SG using it)
-    const ampChannelSubs = new Map(); // "subnet.device.ch" → subsystem name per channel
+    const ampChannelSubs = new Map(); // "subnet.device.ch" → channel name (e.g. "Main L 01")
 
     document.querySelectorAll('#ampIdGroups [data-sgid]').forEach(card => {
       const sgId = parseInt(card.dataset.sgid);
@@ -2871,6 +3194,7 @@ function ampIdExportDbpr() {
         const posIdx = parseInt(tr.dataset.posidx);
         const tds = tr.querySelectorAll('td');
         if (tds.length < 5) return;
+        const displayNum = tds[0].textContent.trim();
         const ampIdStr = tds[3].textContent.trim();
         const chStr = tds[4].textContent.trim().toUpperCase();
         if (ampIdStr === '—' || !ampIdStr || !chStr || chStr === '—') return;
@@ -2887,7 +3211,9 @@ function ampIdExportDbpr() {
         const key = subnet + '.' + String(device).padStart(2, '0');
         ampIds.set(key, { subnet, device });
         if (!ampSubsystem.has(key)) ampSubsystem.set(key, cardTitle);
-        ampChannelSubs.set(key + '.' + ampCh, cardTitle);
+        // Channel name: "SG Name 01" (subsystem + zero-padded position number)
+        const chName = cardTitle + ' ' + String(displayNum).padStart(2, '0');
+        ampChannelSubs.set(key + '.' + ampCh, chName);
         assignments.push({ sgId, posIdx, cabId, subnet, device, ampCh, key });
       });
     });
@@ -2939,14 +3265,37 @@ function ampIdExportDbpr() {
       else ampInputMode.set(a.key, 2);
     }
 
-    // Collect all CabinetIds being reassigned (all OrderIndex rows at each sgId+posIdx)
+    // Build amp key → existing DeviceId mapping from device Name field
+    // This lets us REUSE DeviceIds so PatchIOChannels, SnapshotValues, Controls etc keep valid references
+    const keyToExistingDevId = new Map(); // "0.01" → DeviceId
+    const existingChNames = new Map(); // "ampKey.ch" → name
+    const existingDevNames = new Map(); // "ampKey" → device name
+    const ampDevRows = db.exec(`
+      SELECT d.DeviceId, d.Name, d.Model, ach.AmplifierChannel, ach.Name as ChName
+      FROM Devices d
+      JOIN AmplifierChannels ach ON d.DeviceId = ach.DeviceId
+      WHERE d.Model IN ('D80','D20','D90','D40','D25','U7N')
+    `);
+    if (ampDevRows[0]) {
+      for (const r of ampDevRows[0].values) {
+        const [devId, devName, devModel, achNum, achName] = r;
+        const dm = (devName || '').match(/(\d+)\.(\d+)\s*$/);
+        if (!dm) continue;
+        const ak = parseInt(dm[1]) + '.' + String(parseInt(dm[2])).padStart(2, '0');
+        if (!keyToExistingDevId.has(ak)) keyToExistingDevId.set(ak, devId);
+        existingChNames.set(ak + '.' + achNum, achName || '');
+        if (!existingDevNames.has(ak)) existingDevNames.set(ak, devName);
+      }
+    }
+
+    // Collect all CabinetIds being reassigned
     const reassignedCabIds = new Set();
     for (const a of assignments) {
       const cabRows = db.exec('SELECT CabinetId FROM Cabinets WHERE SourceGroupId=? AND PositionIndex=?', [a.sgId, a.posIdx]);
       if (cabRows[0]) for (const r of cabRows[0].values) reassignedCabIds.add(r[0]);
     }
 
-    // Find which existing DeviceIds are still referenced by cabinets we're NOT touching
+    // Find which DeviceIds are still used by untouched cabinets
     const usedDeviceIds = new Set();
     const allCabs = db.exec('SELECT CabinetId, DeviceId FROM Cabinets WHERE DeviceId > 0');
     if (allCabs[0]) {
@@ -2955,73 +3304,76 @@ function ampIdExportDbpr() {
       }
     }
 
-    // Delete orphaned amp Device rows (only D80s — preserve ArraySight and other non-amp devices)
-    const allDevs = db.exec("SELECT DeviceId FROM Devices WHERE Model IN ('D80','D20','D90','D40','D25','U7N')");
-    if (allDevs[0]) {
-      for (const r of allDevs[0].values) {
-        if (!usedDeviceIds.has(r[0])) {
-          db.run('DELETE FROM Devices WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM DevicesAmplifier WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM AmplifierChannels WHERE DeviceId=?', [r[0]]);
-        }
-      }
-    }
-
-    // Find max DeviceId for creating new ones
-    const maxIdRes = db.exec('SELECT MAX(DeviceId) FROM Devices');
+    // For each amp in DOM assignments: reuse existing DeviceId or create new
+    const deviceIdMap = new Map(); // key → deviceId (final)
+    const keptDeviceIds = new Set(); // DeviceIds we're keeping/reusing
+    let maxIdRes = db.exec('SELECT MAX(DeviceId) FROM Devices');
     let nextDeviceId = (maxIdRes[0] && maxIdRes[0].values[0][0]) ? maxIdRes[0].values[0][0] + 1 : 1;
 
-    // Create a new Device row for each unique amp ID
-    const deviceIdMap = new Map();
     for (const [key, info] of ampIds) {
       const model = ampModelMap.get(key) || 'D80';
       const subsys = ampSubsystem.get(key) || '';
-      const devName = subsys ? subsys + ' ' + key : key;
-      db.run('INSERT INTO Devices (DeviceId, Model, RemoteIdSubnet, RemoteIdDevice, Name) VALUES (?,?,?,?,?)',
-        [nextDeviceId, model, info.subnet, info.device, devName]);
+      const devName = existingDevNames.get(key) || (subsys ? subsys + ' ' + key : key);
       const inMode = (model === 'D80' || model === 'D20') ? (ampInputMode.get(key) ?? 2) : 0;
       const outMode = (model === 'D80' || model === 'D20') ? (ampOutputMode.get(key) ?? 0) : 0;
-      db.run('INSERT INTO DevicesAmplifier (DeviceId, InputMode, OutputMode) VALUES (?,?,?)',
-        [nextDeviceId, inMode, outMode]);
-      for (let ch = 1; ch <= 4; ch++) {
-        // Set channel name to subsystem name of whatever is assigned to this channel
-        const chSub = ampChannelSubs.get(key + '.' + ch) || subsys || '';
-        const chName = chSub ? chSub + ' ' : '';
-        db.run('INSERT INTO AmplifierChannels (DeviceId, AmplifierChannel, Name) VALUES (?,?,?)',
-          [nextDeviceId, ch, chName]);
+
+      const existingDevId = keyToExistingDevId.get(key);
+      if (existingDevId) {
+        // REUSE existing DeviceId — preserves all FK references (PatchIOChannels, SnapshotValues, Controls, Groups, ChannelGroups)
+        db.run('UPDATE Devices SET Model=?, RemoteIdSubnet=?, RemoteIdDevice=?, Name=? WHERE DeviceId=?',
+          [model, info.subnet, info.device, devName, existingDevId]);
+        db.run('UPDATE DevicesAmplifier SET InputMode=?, OutputMode=? WHERE DeviceId=?',
+          [inMode, outMode, existingDevId]);
+        for (let ch = 1; ch <= 4; ch++) {
+          const chName = existingChNames.get(key + '.' + ch) ?? ampChannelSubs.get(key + '.' + ch) ?? '';
+          db.run('UPDATE AmplifierChannels SET Name=? WHERE DeviceId=? AND AmplifierChannel=?',
+            [chName, existingDevId, ch]);
+        }
+        deviceIdMap.set(key, existingDevId);
+        keptDeviceIds.add(existingDevId);
+      } else {
+        // New amp — create device
+        db.run('INSERT INTO Devices (DeviceId, Model, RemoteIdSubnet, RemoteIdDevice, Name) VALUES (?,?,?,?,?)',
+          [nextDeviceId, model, info.subnet, info.device, devName]);
+        db.run('INSERT INTO DevicesAmplifier (DeviceId, InputMode, OutputMode) VALUES (?,?,?)',
+          [nextDeviceId, inMode, outMode]);
+        for (let ch = 1; ch <= 4; ch++) {
+          const chName = existingChNames.get(key + '.' + ch) ?? ampChannelSubs.get(key + '.' + ch) ?? '';
+          db.run('INSERT INTO AmplifierChannels (DeviceId, AmplifierChannel, Name) VALUES (?,?,?)',
+            [nextDeviceId, ch, chName]);
+        }
+        deviceIdMap.set(key, nextDeviceId);
+        keptDeviceIds.add(nextDeviceId);
+        nextDeviceId++;
       }
-      deviceIdMap.set(key, nextDeviceId);
-      nextDeviceId++;
     }
 
-    // Collect old→new mappings for Groups table update, then update Cabinets
-    const groupUpdates = []; // {oldDev, oldCh, newDev, newCh}
+    // Delete orphaned amp devices — ones not reused and not referenced by untouched cabinets
+    const allDevs = db.exec("SELECT DeviceId FROM Devices WHERE Model IN ('D80','D20','D90','D40','D25','U7N')");
+    if (allDevs[0]) {
+      for (const r of allDevs[0].values) {
+        if (!keptDeviceIds.has(r[0]) && !usedDeviceIds.has(r[0])) {
+          // Clean up ALL tables referencing this DeviceId before deleting
+          db.run('DELETE FROM PatchIOChannels WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM ChannelGroups WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM SnapshotValues WHERE TargetId=?', [r[0]]);
+          db.run('DELETE FROM Controls WHERE TargetId=?', [r[0]]);
+          db.run('DELETE FROM Groups WHERE TargetId=?', [r[0]]);
+          db.run('DELETE FROM AmplifierChannels WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM DevicesAmplifier WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM Devices WHERE DeviceId=?', [r[0]]);
+        }
+      }
+    }
+
+    // Update Cabinets to point to correct DeviceIds
     for (const a of assignments) {
       const newDevId = deviceIdMap.get(a.key);
       if (newDevId == null) continue;
-      // Get current DeviceId+Ch before overwriting (any row at this sgId+posIdx — they all share the same device)
-      const oldRows = db.exec('SELECT DeviceId, AmplifierChannel FROM Cabinets WHERE SourceGroupId=? AND PositionIndex=? LIMIT 1', [a.sgId, a.posIdx]);
-      if (oldRows[0] && oldRows[0].values[0]) {
-        const [oldDev, oldCh] = oldRows[0].values[0];
-        if (oldDev > 0) {
-          groupUpdates.push({ oldDev, oldCh, newDev: newDevId, newCh: a.ampCh });
-        }
-      }
-      // Update by CabinetId to avoid stacked-cab overwrites
       db.run('UPDATE Cabinets SET DeviceId=?, AmplifierChannel=? WHERE CabinetId=?',
         [newDevId, a.ampCh, a.cabId]);
-      // Also catch unassigned cabs at this position (OrderIndex > 1 etc)
       db.run('UPDATE Cabinets SET DeviceId=?, AmplifierChannel=? WHERE SourceGroupId=? AND PositionIndex=? AND DeviceId=0',
         [newDevId, a.ampCh, a.sgId, a.posIdx]);
-    }
-
-    // Update Groups table — R1 output routing references (TargetId=DeviceId, TargetChannel=AmplifierChannel)
-    const hasGroups = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='Groups'");
-    if (hasGroups[0]) {
-      for (const g of groupUpdates) {
-        db.run('UPDATE Groups SET TargetId=?, TargetChannel=? WHERE TargetId=? AND TargetChannel=?',
-          [g.newDev, g.newCh, g.oldDev, g.oldCh]);
-      }
     }
 
     // Propagate amp assignments to linked cabs (Linked = CabinetId of primary)
@@ -3664,10 +4016,12 @@ function rackBuildExportDbpr() {
       const posIdx = parseInt(item.dataset.posidx);
       const cabId = parseInt(item.dataset.cabid);
       const sgName = item.dataset.sgname || '';
+      const posNum = item.dataset.posnum || '';
       if (isNaN(sgId) || isNaN(posIdx)) return;
 
       if (!ampSubsystem.has(key)) ampSubsystem.set(key, sgName);
-      ampChannelSubs.set(key + '.' + ampCh, sgName);
+      const chName = sgName + ' ' + String(posNum).padStart(2, '0');
+      ampChannelSubs.set(key + '.' + ampCh, chName);
 
       // Active cabs occupy AB or CD — add both channels
       const isActive = parseInt(item.dataset.slots) === 2;
@@ -3742,6 +4096,28 @@ function rackBuildExportDbpr() {
       else ampInputMode.set(a.key, 2);
     }
 
+    // Build amp key → existing DeviceId mapping (reuse IDs to preserve FK references)
+    const keyToExistingDevId = new Map();
+    const existingChNames = new Map();
+    const existingDevNames = new Map();
+    const ampDevRows = db.exec(`
+      SELECT d.DeviceId, d.Name, d.Model, ach.AmplifierChannel, ach.Name as ChName
+      FROM Devices d
+      JOIN AmplifierChannels ach ON d.DeviceId = ach.DeviceId
+      WHERE d.Model IN ('D80','D20','D90','D40','D25','U7N')
+    `);
+    if (ampDevRows[0]) {
+      for (const r of ampDevRows[0].values) {
+        const [devId, devName, devModel, achNum, achName] = r;
+        const dm = (devName || '').match(/(\d+)\.(\d+)\s*$/);
+        if (!dm) continue;
+        const ak = parseInt(dm[1]) + '.' + String(parseInt(dm[2])).padStart(2, '0');
+        if (!keyToExistingDevId.has(ak)) keyToExistingDevId.set(ak, devId);
+        existingChNames.set(ak + '.' + achNum, achName || '');
+        if (!existingDevNames.has(ak)) existingDevNames.set(ak, devName);
+      }
+    }
+
     // Collect all CabinetIds being reassigned
     const reassignedCabIds = new Set();
     for (const a of assignments) {
@@ -3758,65 +4134,73 @@ function rackBuildExportDbpr() {
       }
     }
 
-    // Delete orphaned amp Device rows (only D80s — preserve ArraySight and other non-amp devices)
+    // Reuse existing DeviceIds or create new ones
+    const deviceIdMap = new Map();
+    const keptDeviceIds = new Set();
+    let maxIdRes = db.exec('SELECT MAX(DeviceId) FROM Devices');
+    let nextDeviceId = (maxIdRes[0] && maxIdRes[0].values[0][0]) ? maxIdRes[0].values[0][0] + 1 : 1;
+
+    for (const [key, info] of ampIds) {
+      const model = ampModelMap.get(key) || 'D80';
+      const subsys = ampSubsystem.get(key) || '';
+      const devName = existingDevNames.get(key) || (subsys ? subsys + ' ' + key : key);
+      const inMode = (model === 'D80' || model === 'D20') ? (ampInputMode.get(key) ?? 2) : 0;
+      const outMode = (model === 'D80' || model === 'D20') ? (ampOutputMode.get(key) ?? 0) : 0;
+
+      const existingDevId = keyToExistingDevId.get(key);
+      if (existingDevId) {
+        db.run('UPDATE Devices SET Model=?, RemoteIdSubnet=?, RemoteIdDevice=?, Name=? WHERE DeviceId=?',
+          [model, info.subnet, info.device, devName, existingDevId]);
+        db.run('UPDATE DevicesAmplifier SET InputMode=?, OutputMode=? WHERE DeviceId=?',
+          [inMode, outMode, existingDevId]);
+        for (let ch = 1; ch <= 4; ch++) {
+          const chName = existingChNames.get(key + '.' + ch) ?? ampChannelSubs.get(key + '.' + ch) ?? '';
+          db.run('UPDATE AmplifierChannels SET Name=? WHERE DeviceId=? AND AmplifierChannel=?',
+            [chName, existingDevId, ch]);
+        }
+        deviceIdMap.set(key, existingDevId);
+        keptDeviceIds.add(existingDevId);
+      } else {
+        db.run('INSERT INTO Devices (DeviceId, Model, RemoteIdSubnet, RemoteIdDevice, Name) VALUES (?,?,?,?,?)',
+          [nextDeviceId, model, info.subnet, info.device, devName]);
+        db.run('INSERT INTO DevicesAmplifier (DeviceId, InputMode, OutputMode) VALUES (?,?,?)',
+          [nextDeviceId, inMode, outMode]);
+        for (let ch = 1; ch <= 4; ch++) {
+          const chName = existingChNames.get(key + '.' + ch) ?? ampChannelSubs.get(key + '.' + ch) ?? '';
+          db.run('INSERT INTO AmplifierChannels (DeviceId, AmplifierChannel, Name) VALUES (?,?,?)',
+            [nextDeviceId, ch, chName]);
+        }
+        deviceIdMap.set(key, nextDeviceId);
+        keptDeviceIds.add(nextDeviceId);
+        nextDeviceId++;
+      }
+    }
+
+    // Delete orphaned amp devices and clean up ALL referencing tables
     const allDevs = db.exec("SELECT DeviceId FROM Devices WHERE Model IN ('D80','D20','D90','D40','D25','U7N')");
     if (allDevs[0]) {
       for (const r of allDevs[0].values) {
-        if (!usedDeviceIds.has(r[0])) {
-          db.run('DELETE FROM Devices WHERE DeviceId=?', [r[0]]);
-          db.run('DELETE FROM DevicesAmplifier WHERE DeviceId=?', [r[0]]);
+        if (!keptDeviceIds.has(r[0]) && !usedDeviceIds.has(r[0])) {
+          db.run('DELETE FROM PatchIOChannels WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM ChannelGroups WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM SnapshotValues WHERE TargetId=?', [r[0]]);
+          db.run('DELETE FROM Controls WHERE TargetId=?', [r[0]]);
+          db.run('DELETE FROM Groups WHERE TargetId=?', [r[0]]);
           db.run('DELETE FROM AmplifierChannels WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM DevicesAmplifier WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM Devices WHERE DeviceId=?', [r[0]]);
         }
       }
     }
 
-    // Create new Device rows
-    const maxIdRes = db.exec('SELECT MAX(DeviceId) FROM Devices');
-    let nextDeviceId = (maxIdRes[0] && maxIdRes[0].values[0][0]) ? maxIdRes[0].values[0][0] + 1 : 1;
-
-    const deviceIdMap = new Map();
-    for (const [key, info] of ampIds) {
-      const model = ampModelMap.get(key) || 'D80';
-      const subsys = ampSubsystem.get(key) || '';
-      const devName = subsys ? subsys + ' ' + key : key;
-      db.run('INSERT INTO Devices (DeviceId, Model, RemoteIdSubnet, RemoteIdDevice, Name) VALUES (?,?,?,?,?)',
-        [nextDeviceId, model, info.subnet, info.device, devName]);
-      const inMode = (model === 'D80' || model === 'D20') ? (ampInputMode.get(key) ?? 2) : 0;
-      const outMode = (model === 'D80' || model === 'D20') ? (ampOutputMode.get(key) ?? 0) : 0;
-      db.run('INSERT INTO DevicesAmplifier (DeviceId, InputMode, OutputMode) VALUES (?,?,?)',
-        [nextDeviceId, inMode, outMode]);
-      for (let ch = 1; ch <= 4; ch++) {
-        const chSub = ampChannelSubs.get(key + '.' + ch) || subsys || '';
-        const chName = chSub ? chSub + ' ' : '';
-        db.run('INSERT INTO AmplifierChannels (DeviceId, AmplifierChannel, Name) VALUES (?,?,?)',
-          [nextDeviceId, ch, chName]);
-      }
-      deviceIdMap.set(key, nextDeviceId);
-      nextDeviceId++;
-    }
-
-    // Update Cabinets + Groups table
-    const groupUpdates = [];
+    // Update Cabinets to point to correct DeviceIds
     for (const a of assignments) {
       const newDevId = deviceIdMap.get(a.key);
       if (newDevId == null) continue;
-      const oldRows = db.exec('SELECT DeviceId, AmplifierChannel FROM Cabinets WHERE SourceGroupId=? AND PositionIndex=? LIMIT 1', [a.sgId, a.posIdx]);
-      if (oldRows[0] && oldRows[0].values[0]) {
-        const [oldDev, oldCh] = oldRows[0].values[0];
-        if (oldDev > 0) groupUpdates.push({ oldDev, oldCh, newDev: newDevId, newCh: a.ampCh });
-      }
       db.run('UPDATE Cabinets SET DeviceId=?, AmplifierChannel=? WHERE CabinetId=?',
         [newDevId, a.ampCh, a.cabId]);
       db.run('UPDATE Cabinets SET DeviceId=?, AmplifierChannel=? WHERE SourceGroupId=? AND PositionIndex=? AND DeviceId=0',
         [newDevId, a.ampCh, a.sgId, a.posIdx]);
-    }
-
-    const hasGroups = db.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='Groups'");
-    if (hasGroups[0]) {
-      for (const g of groupUpdates) {
-        db.run('UPDATE Groups SET TargetId=?, TargetChannel=? WHERE TargetId=? AND TargetChannel=?',
-          [g.newDev, g.newCh, g.oldDev, g.oldCh]);
-      }
     }
 
     // Propagate amp assignments to linked cabs
@@ -3964,11 +4348,12 @@ function unifiedExportDbpr() {
     if (includeAmp) {
       document.querySelectorAll('#ampIdGroups [data-sgid]').forEach(card => {
         const sgId = parseInt(card.dataset.sgid);
-        const cardTitle = card.querySelector('p')?.textContent?.replace(/\s*\([LR]\)\s*$/, '').trim() || '';
+        const cardTitle = card.querySelector('p')?.textContent?.replace(/\s*\([AB]\)\s*$/, '').trim() || '';
         card.querySelectorAll('tbody tr').forEach(tr => {
           if (tr.dataset.linked) return;
           const tds = tr.querySelectorAll('td');
           if (tds.length < 5) return;
+          const displayNum = tds[0].textContent.trim();
           const ampIdStr = tds[3].textContent.trim();
           const chStr = tds[4].textContent.trim().toUpperCase();
           if (ampIdStr === '—' || !ampIdStr || !chStr || chStr === '—') return;
@@ -3984,7 +4369,7 @@ function unifiedExportDbpr() {
           const key = subnet + '.' + String(device).padStart(2, '0');
           ampIds.set(key, { subnet, device });
           if (!ampSubsystem.has(key)) ampSubsystem.set(key, cardTitle);
-          ampChannelSubs.set(key + '.' + ampCh, cardTitle);
+          ampChannelSubs.set(key + '.' + ampCh, cardTitle + ' ' + String(displayNum).padStart(2, '0'));
           assignments.push({ sgId, posIdx, cabId, subnet, device, ampCh, key });
         });
       });
@@ -4010,10 +4395,11 @@ function unifiedExportDbpr() {
         const posIdx = parseInt(cabItem.dataset.posidx);
         const cabId = parseInt(cabItem.dataset.cabid);
         const sgName = cabItem.dataset.sgname || '';
+        const posNum = cabItem.dataset.posnum || '';
         const key = subnet + '.' + String(device).padStart(2, '0');
         ampIds.set(key, { subnet, device });
         if (!ampSubsystem.has(key)) ampSubsystem.set(key, sgName);
-        ampChannelSubs.set(key + '.' + ampCh, sgName);
+        ampChannelSubs.set(key + '.' + ampCh, sgName + ' ' + String(posNum).padStart(2, '0'));
         assignments.push({ sgId, posIdx, cabId, subnet, device, ampCh, key });
       });
     }
@@ -4074,55 +4460,109 @@ function unifiedExportDbpr() {
     const asRes = db.exec('SELECT ArraySightId FROM SourceGroups WHERE ArraySightId > 0');
     if (asRes[0]) for (const r of asRes[0].values) arraySightIds.add(r[0]);
 
-    // Clear all amp devices (preserve ArraySight + non-amp devices)
-    const oldDevRes = db.exec("SELECT DeviceId FROM Devices WHERE Model IN ('D80','D20','D90','D40','D25','U7N')");
-    if (oldDevRes[0]) {
-      for (const r of oldDevRes[0].values) {
-        if (arraySightIds.has(r[0])) continue;
-        db.run('DELETE FROM DevicesAmplifier WHERE DeviceId=?', [r[0]]);
-        db.run('DELETE FROM AmplifierChannels WHERE DeviceId=?', [r[0]]);
-        db.run('DELETE FROM Devices WHERE DeviceId=?', [r[0]]);
+    // Build amp key → existing DeviceId mapping (reuse IDs to preserve FK references)
+    const keyToExistingDevId = new Map();
+    const existingChNames = new Map();
+    const existingDevNames = new Map();
+    const ampDevRows = db.exec(`
+      SELECT d.DeviceId, d.Name, d.Model, ach.AmplifierChannel, ach.Name as ChName
+      FROM Devices d
+      JOIN AmplifierChannels ach ON d.DeviceId = ach.DeviceId
+      WHERE d.Model IN ('D80','D20','D90','D40','D25','U7N')
+    `);
+    if (ampDevRows[0]) {
+      for (const r of ampDevRows[0].values) {
+        const [devId, devName, devModel, achNum, achName] = r;
+        if (arraySightIds.has(devId)) continue; // skip ArraySight devices
+        const dm = (devName || '').match(/(\d+)\.(\d+)\s*$/);
+        if (!dm) continue;
+        const ak = parseInt(dm[1]) + '.' + String(parseInt(dm[2])).padStart(2, '0');
+        if (!keyToExistingDevId.has(ak)) keyToExistingDevId.set(ak, devId);
+        existingChNames.set(ak + '.' + achNum, achName || '');
+        if (!existingDevNames.has(ak)) existingDevNames.set(ak, devName);
       }
     }
-    // Unlink all cabs from deleted devices (but not ArraySight devices)
-    db.run('UPDATE Cabinets SET DeviceId=0, AmplifierChannel=0 WHERE DeviceId > 0 AND DeviceId NOT IN (SELECT ArraySightId FROM SourceGroups WHERE ArraySightId > 0)');
 
-    // Create new devices and assign
+    // Collect CabinetIds being reassigned
+    const reassignedCabIds = new Set();
+    for (const a of assignments) {
+      const cabRows = db.exec('SELECT CabinetId FROM Cabinets WHERE SourceGroupId=? AND PositionIndex=?', [a.sgId, a.posIdx]);
+      if (cabRows[0]) for (const r of cabRows[0].values) reassignedCabIds.add(r[0]);
+    }
+    const usedDeviceIds = new Set();
+    const allCabs = db.exec('SELECT CabinetId, DeviceId FROM Cabinets WHERE DeviceId > 0');
+    if (allCabs[0]) {
+      for (const r of allCabs[0].values) {
+        if (!reassignedCabIds.has(r[0])) usedDeviceIds.add(r[1]);
+      }
+    }
+
+    // Reuse existing DeviceIds or create new ones
+    const ampDeviceIds = new Map();
+    const keptDeviceIds = new Set();
     let nextDevId = 1;
     const devIdRes = db.exec('SELECT MAX(DeviceId) FROM Devices');
     if (devIdRes[0] && devIdRes[0].values[0][0]) nextDevId = devIdRes[0].values[0][0] + 1;
 
-    const ampDeviceIds = new Map(); // key → DeviceId
     for (const [key, info] of ampIds) {
-      const devId = nextDevId++;
-      ampDeviceIds.set(key, devId);
       const model = ampModelMap.get(key) || 'D80';
-      // D80 uses OutputMode/InputMode; D90/D40/etc use 0/0
       const oMode = (model === 'D80' || model === 'D20') ? (ampOutputMode.get(key) || 0) : 0;
-      const iMode = (model === 'D80' || model === 'D20') ? (ampInputMode.get(key) || 0) : 0;
-      const subsysName = ampSubsystem.get(key) || '';
-      db.run('INSERT INTO Devices (DeviceId, Model, RemoteIdSubnet, RemoteIdDevice, Name) VALUES (?,?,?,?,?)',
-        [devId, model, info.subnet, info.device, subsysName]);
-      db.run('INSERT INTO DevicesAmplifier (DeviceId, OutputMode, InputMode) VALUES (?,?,?)',
-        [devId, oMode, iMode]);
+      const iMode = (model === 'D80' || model === 'D20') ? (ampInputMode.get(key) ?? 2) : 0;
+      const devName = existingDevNames.get(key) || (ampSubsystem.get(key) || '');
 
-      // Create AmplifierChannels rows
-      for (let ch = 1; ch <= 4; ch++) {
-        const chSubsys = ampChannelSubs.get(key + '.' + ch) || '';
-        db.run('INSERT INTO AmplifierChannels (DeviceId, AmplifierChannel, Name) VALUES (?,?,?)',
-          [devId, ch, chSubsys]);
+      const existingDevId = keyToExistingDevId.get(key);
+      if (existingDevId) {
+        db.run('UPDATE Devices SET Model=?, RemoteIdSubnet=?, RemoteIdDevice=?, Name=? WHERE DeviceId=?',
+          [model, info.subnet, info.device, devName, existingDevId]);
+        db.run('UPDATE DevicesAmplifier SET InputMode=?, OutputMode=? WHERE DeviceId=?',
+          [iMode, oMode, existingDevId]);
+        for (let ch = 1; ch <= 4; ch++) {
+          const chName = existingChNames.get(key + '.' + ch) ?? ampChannelSubs.get(key + '.' + ch) ?? '';
+          db.run('UPDATE AmplifierChannels SET Name=? WHERE DeviceId=? AND AmplifierChannel=?',
+            [chName, existingDevId, ch]);
+        }
+        ampDeviceIds.set(key, existingDevId);
+        keptDeviceIds.add(existingDevId);
+      } else {
+        const devId = nextDevId++;
+        db.run('INSERT INTO Devices (DeviceId, Model, RemoteIdSubnet, RemoteIdDevice, Name) VALUES (?,?,?,?,?)',
+          [devId, model, info.subnet, info.device, devName]);
+        db.run('INSERT INTO DevicesAmplifier (DeviceId, OutputMode, InputMode) VALUES (?,?,?)',
+          [devId, oMode, iMode]);
+        for (let ch = 1; ch <= 4; ch++) {
+          const chName = existingChNames.get(key + '.' + ch) ?? ampChannelSubs.get(key + '.' + ch) ?? '';
+          db.run('INSERT INTO AmplifierChannels (DeviceId, AmplifierChannel, Name) VALUES (?,?,?)',
+            [devId, ch, chName]);
+        }
+        ampDeviceIds.set(key, devId);
+        keptDeviceIds.add(devId);
       }
     }
 
-    // Assign cabs to devices — by CabinetId to avoid stacked-cab overwrites
+    // Delete orphaned amp devices and clean up ALL referencing tables
+    const oldDevRes = db.exec("SELECT DeviceId FROM Devices WHERE Model IN ('D80','D20','D90','D40','D25','U7N')");
+    if (oldDevRes[0]) {
+      for (const r of oldDevRes[0].values) {
+        if (arraySightIds.has(r[0])) continue;
+        if (!keptDeviceIds.has(r[0]) && !usedDeviceIds.has(r[0])) {
+          db.run('DELETE FROM PatchIOChannels WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM ChannelGroups WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM SnapshotValues WHERE TargetId=?', [r[0]]);
+          db.run('DELETE FROM Controls WHERE TargetId=?', [r[0]]);
+          db.run('DELETE FROM Groups WHERE TargetId=?', [r[0]]);
+          db.run('DELETE FROM AmplifierChannels WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM DevicesAmplifier WHERE DeviceId=?', [r[0]]);
+          db.run('DELETE FROM Devices WHERE DeviceId=?', [r[0]]);
+        }
+      }
+    }
+
+    // Assign cabs to devices
     for (const a of assignments) {
       const devId = ampDeviceIds.get(a.key);
       if (!devId) continue;
-      // Update the specific cab
       db.run('UPDATE Cabinets SET DeviceId=?, AmplifierChannel=? WHERE CabinetId=?',
         [devId, a.ampCh, a.cabId]);
-      // Also update any other cabs at this position that aren't individually assigned
-      // (e.g. OrderIndex > 1 cabs in arrays that share the amp)
       db.run('UPDATE Cabinets SET DeviceId=?, AmplifierChannel=? WHERE SourceGroupId=? AND PositionIndex=? AND DeviceId=0',
         [devId, a.ampCh, a.sgId, a.posIdx]);
     }
