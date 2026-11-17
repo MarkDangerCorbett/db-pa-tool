@@ -17,7 +17,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>d&b PA Tech Tool v1.1.4 BETA</title>
+<title>d&b PA Tech Tool v1.1.5 BETA</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -608,7 +608,7 @@ svg { width: 100%; display: block; }
 
 <nav class="nav">
   <div class="nav-top-row">
-    <div class="nav-brand">d&amp;b PA Tech Tool <span style="font-size:0.7em;opacity:0.6">v1.1.4 BETA</span></div>
+    <div class="nav-brand">d&amp;b PA Tech Tool <span style="font-size:0.7em;opacity:0.6">v1.1.5 BETA</span></div>
     <button id="themeToggle" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);color:var(--muted);font-family:var(--mono);font-size:0.72rem;padding:4px 10px;border-radius:4px;cursor:pointer;letter-spacing:0.05em;white-space:nowrap">Light</button>
   </div>
   <div class="nav-tabs">
@@ -2673,7 +2673,8 @@ function ampIdFixChannelNames() {
 
     for (const sgRow of sgRes[0].values) {
       const [sgId, sgName, sgType, orderIdx, nextSgId] = sgRow;
-      const baseName = (_origSgNames[sgId] || sgName).trim();
+      // Strip ArrayCalc's stereo pair suffix "(L)" / "(R)" — we add our own L/R at the end
+      const baseName = (_origSgNames[sgId] || sgName).trim().replace(/\s*\([LR]\)\s*$/, '').trim();
 
       // Get cabinets with amp channel info
       const cabRes = db.exec(`
@@ -3188,8 +3189,11 @@ function ampIdExportDbpr() {
 
     document.querySelectorAll('#ampIdGroups [data-sgid]').forEach(card => {
       const sgId = parseInt(card.dataset.sgid);
-      // Get subsystem name from card title (original SG name without A/B suffix)
-      const cardTitle = card.querySelector('p')?.textContent?.replace(/\s*\([AB]\)\s*$/, '').trim() || '';
+      // Get subsystem name from card title — strip (A)/(B) and (L)/(R) suffixes
+      const cardTitleRaw = card.querySelector('p')?.textContent?.replace(/\s*\([AB]\)\s*$/, '').trim() || '';
+      const sideMatch = cardTitleRaw.match(/\s*\(([LR])\)\s*$/);
+      const cardSide = sideMatch ? sideMatch[1] : '';
+      const cardTitle = sideMatch ? cardTitleRaw.replace(/\s*\([LR]\)\s*$/, '').trim() : cardTitleRaw;
       card.querySelectorAll('tbody tr').forEach(tr => {
         const posIdx = parseInt(tr.dataset.posidx);
         const tds = tr.querySelectorAll('td');
@@ -3211,8 +3215,8 @@ function ampIdExportDbpr() {
         const key = subnet + '.' + String(device).padStart(2, '0');
         ampIds.set(key, { subnet, device });
         if (!ampSubsystem.has(key)) ampSubsystem.set(key, cardTitle);
-        // Channel name: "SG Name 01" (subsystem + zero-padded position number)
-        const chName = cardTitle + ' ' + String(displayNum).padStart(2, '0');
+        // Channel name: "SG Name 01L" — side letter at end, R1 15-char limit
+        const chName = cardTitle + ' ' + String(displayNum).padStart(2, '0') + cardSide;
         ampChannelSubs.set(key + '.' + ampCh, chName);
         assignments.push({ sgId, posIdx, cabId, subnet, device, ampCh, key });
       });
@@ -4015,12 +4019,17 @@ function rackBuildExportDbpr() {
       const sgId = parseInt(item.dataset.sgid);
       const posIdx = parseInt(item.dataset.posidx);
       const cabId = parseInt(item.dataset.cabid);
-      const sgName = item.dataset.sgname || '';
+      const sgNameRaw = item.dataset.sgname || '';
       const posNum = item.dataset.posnum || '';
       if (isNaN(sgId) || isNaN(posIdx)) return;
 
-      if (!ampSubsystem.has(key)) ampSubsystem.set(key, sgName);
-      const chName = sgName + ' ' + String(posNum).padStart(2, '0');
+      // Strip (L)/(R) from SG name, append side letter at end of channel name
+      const rackSideMatch = sgNameRaw.match(/\s*\(([LR])\)\s*$/);
+      const rackSide = rackSideMatch ? rackSideMatch[1] : '';
+      const sgNameClean = rackSideMatch ? sgNameRaw.replace(/\s*\([LR]\)\s*$/, '').trim() : sgNameRaw;
+
+      if (!ampSubsystem.has(key)) ampSubsystem.set(key, sgNameClean);
+      const chName = sgNameClean + ' ' + String(posNum).padStart(2, '0') + rackSide;
       ampChannelSubs.set(key + '.' + ampCh, chName);
 
       // Active cabs occupy AB or CD — add both channels
@@ -4348,7 +4357,10 @@ function unifiedExportDbpr() {
     if (includeAmp) {
       document.querySelectorAll('#ampIdGroups [data-sgid]').forEach(card => {
         const sgId = parseInt(card.dataset.sgid);
-        const cardTitle = card.querySelector('p')?.textContent?.replace(/\s*\([AB]\)\s*$/, '').trim() || '';
+        const cardTitleRaw2 = card.querySelector('p')?.textContent?.replace(/\s*\([AB]\)\s*$/, '').trim() || '';
+        const sideMatch2 = cardTitleRaw2.match(/\s*\(([LR])\)\s*$/);
+        const cardSide2 = sideMatch2 ? sideMatch2[1] : '';
+        const cardTitle2 = sideMatch2 ? cardTitleRaw2.replace(/\s*\([LR]\)\s*$/, '').trim() : cardTitleRaw2;
         card.querySelectorAll('tbody tr').forEach(tr => {
           if (tr.dataset.linked) return;
           const tds = tr.querySelectorAll('td');
@@ -4368,8 +4380,8 @@ function unifiedExportDbpr() {
           const cabId = parseInt(tr.dataset.cabid);
           const key = subnet + '.' + String(device).padStart(2, '0');
           ampIds.set(key, { subnet, device });
-          if (!ampSubsystem.has(key)) ampSubsystem.set(key, cardTitle);
-          ampChannelSubs.set(key + '.' + ampCh, cardTitle + ' ' + String(displayNum).padStart(2, '0'));
+          if (!ampSubsystem.has(key)) ampSubsystem.set(key, cardTitle2);
+          ampChannelSubs.set(key + '.' + ampCh, cardTitle2 + ' ' + String(displayNum).padStart(2, '0') + cardSide2);
           assignments.push({ sgId, posIdx, cabId, subnet, device, ampCh, key });
         });
       });
@@ -4394,12 +4406,16 @@ function unifiedExportDbpr() {
         const sgId = parseInt(cabItem.dataset.sgid);
         const posIdx = parseInt(cabItem.dataset.posidx);
         const cabId = parseInt(cabItem.dataset.cabid);
-        const sgName = cabItem.dataset.sgname || '';
+        const sgNameRaw3 = cabItem.dataset.sgname || '';
         const posNum = cabItem.dataset.posnum || '';
         const key = subnet + '.' + String(device).padStart(2, '0');
         ampIds.set(key, { subnet, device });
-        if (!ampSubsystem.has(key)) ampSubsystem.set(key, sgName);
-        ampChannelSubs.set(key + '.' + ampCh, sgName + ' ' + String(posNum).padStart(2, '0'));
+        // Strip (L)/(R), append side letter at end
+        const sideMatch3 = sgNameRaw3.match(/\s*\(([LR])\)\s*$/);
+        const side3 = sideMatch3 ? sideMatch3[1] : '';
+        const sgClean3 = sideMatch3 ? sgNameRaw3.replace(/\s*\([LR]\)\s*$/, '').trim() : sgNameRaw3;
+        if (!ampSubsystem.has(key)) ampSubsystem.set(key, sgClean3);
+        ampChannelSubs.set(key + '.' + ampCh, sgClean3 + ' ' + String(posNum).padStart(2, '0') + side3);
         assignments.push({ sgId, posIdx, cabId, subnet, device, ampCh, key });
       });
     }

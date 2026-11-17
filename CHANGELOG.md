@@ -4,7 +4,8 @@ Versioning: `major.minor.patch` (e.g. 0.98.01). Patch = small point updates.
 
 ---
 
-## 1.1.4 BETA
+## 1.1.5 BETA
+- **Channel naming format fix.** Stereo pair side letter now appended at end of channel name: `"Main 01L"` instead of `"Main (L) 01"`. Fixed in all export paths (Amp ID, Rack Build, Combined).
 - **Channel naming for R1 + AutoR1 compatibility.** Amp ID export now generates channel names that work in both d&b R1 and AutoR1 (v3.autor1.app). Updates both AmplifierChannels and Groups tables so both apps see consistent names.
 - **R1 15-character limit enforced.** All generated channel names are ≤ 15 characters — R1 silently truncates longer names, creating duplicates that break routing.
 - **Sub array naming:** hardcoded `SUBarray` base (no space) → `SUBarray Lxx-xx`, `SUBarray Rxx-xx`, `SUBarray Cxx`.
